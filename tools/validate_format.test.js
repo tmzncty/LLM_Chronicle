@@ -1,5 +1,7 @@
 const assert = require('node:assert/strict');
+const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { test } = require('node:test');
 
@@ -8,6 +10,82 @@ const {
   extractChronicleEntries,
   parseChronicleDate,
 } = require('./validate_format');
+
+const repositoryRoot = path.resolve(__dirname, '..');
+const validateFormatCli = path.join(__dirname, 'validate_format.js');
+
+function runValidateFormatCli(args) {
+  return spawnSync(process.execPath, [validateFormatCli, ...args], {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+  });
+}
+
+function makeWarningOnlyChronicle(t) {
+  const fixtureRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'llm-chronicle-format-cli-'),
+  );
+  t.after(() => fs.rmSync(fixtureRoot, { recursive: true, force: true }));
+
+  const yearDirectory = path.join(fixtureRoot, '2031');
+  fs.mkdirSync(yearDirectory);
+  const fixturePath = path.join(yearDirectory, '01.md');
+  fs.writeFileSync(fixturePath, [
+    '# 2031年1月',
+    '',
+    '**2031-01-01** — Synthetic test entry.[^1]',
+    '',
+    '*本篇由终末地工业史官团队编纂：测试（测试）*',
+    '',
+    '[^1]: Test source, "Test title", 2031-01-01. https://example.com/test',
+    '',
+  ].join('\n'));
+  return fixturePath;
+}
+
+test('CLI rejects unknown options instead of silently weakening strict mode', (t) => {
+  const warningOnlyChronicle = makeWarningOnlyChronicle(t);
+  const result = runValidateFormatCli([
+    '--strcit',
+    warningOnlyChronicle,
+  ]);
+
+  assert.equal(result.status, 2, result.stderr);
+  assert.match(result.stderr, /Unknown option: --strcit/);
+  assert.match(result.stderr, /Usage:/);
+});
+
+test('CLI rejects extra target files instead of silently ignoring them', () => {
+  const result = runValidateFormatCli([
+    '编年/2024/02.md',
+    '编年/2018/06.md',
+  ]);
+
+  assert.equal(result.status, 2, result.stderr);
+  assert.match(result.stderr, /Unexpected argument: 编年[\\/]2018[\\/]06\.md/);
+  assert.match(result.stderr, /Usage:/);
+});
+
+test('CLI rejects an empty target instead of scanning the whole corpus', () => {
+  const result = runValidateFormatCli(['']);
+
+  assert.equal(result.status, 2, 'empty target must fail during CLI parsing');
+  assert.match(result.stderr, /Unexpected empty file argument/);
+  assert.match(result.stderr, /Usage:/);
+  assert.doesNotMatch(result.stderr, /Validating|No chronicle files found/);
+});
+
+test('CLI keeps supported options order-independent', (t) => {
+  const warningOnlyChronicle = makeWarningOnlyChronicle(t);
+  const result = runValidateFormatCli([
+    warningOnlyChronicle,
+    '--strict',
+  ]);
+
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /Warnings:\s*1/);
+  assert.doesNotMatch(result.stderr, /Unknown option/);
+});
 
 test('E001 requires an exact four-ASCII-digit year directory', () => {
   assert.deepEqual(RULES.file_naming.check('编年/2024/02.md'), []);

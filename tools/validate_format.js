@@ -613,11 +613,46 @@ function printResults(results, useJson) {
 // Main
 // ============================================================
 
+const CLI_USAGE = 'Usage: node tools/validate_format.js [--json] [--strict] [file]';
+
+function parseCliArgs(args) {
+  let useJson = false;
+  let strict = false;
+  let targetFile;
+  let positionalOnly = false;
+
+  for (const arg of args) {
+    if (!positionalOnly && arg === '--') {
+      positionalOnly = true;
+    } else if (!positionalOnly && arg === '--json') {
+      useJson = true;
+    } else if (!positionalOnly && arg === '--strict') {
+      strict = true;
+    } else if (!positionalOnly && arg.startsWith('-')) {
+      throw new Error(`Unknown option: ${arg}`);
+    } else if (arg.length === 0) {
+      throw new Error('Unexpected empty file argument');
+    } else if (targetFile !== undefined) {
+      throw new Error(`Unexpected argument: ${arg}`);
+    } else {
+      targetFile = arg;
+    }
+  }
+
+  return { useJson, strict, targetFile };
+}
+
 function main() {
-  const args = process.argv.slice(2);
-  const useJson = args.includes('--json');
-  const strict = args.includes('--strict');
-  const targetFile = args.find(a => !a.startsWith('--'));
+  let options;
+  try {
+    options = parseCliArgs(process.argv.slice(2));
+  } catch (error) {
+    console.error(error.message);
+    console.error(CLI_USAGE);
+    process.exit(2);
+  }
+
+  const { useJson, strict, targetFile } = options;
 
   const root = path.resolve(__dirname, '..');
   const files = findChronicleFiles(root, targetFile);
@@ -644,5 +679,6 @@ if (require.main === module) {
 module.exports = {
   RULES,
   extractChronicleEntries,
+  parseCliArgs,
   parseChronicleDate,
 };
