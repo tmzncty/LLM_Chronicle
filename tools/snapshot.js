@@ -34,6 +34,10 @@ const IA_TIMEOUT = 60; // 秒（IA 归档较慢）
 const MAX_FILE_SIZE_MB = 1;
 const SOCIAL_MEDIA_DOMAINS = ['twitter.com', 'x.com', 'zhihu.com', 'weibo.com', 'bilibili.com'];
 const IA_SPN_API = 'https://web.archive.org/save';
+const CLI_USAGE = [
+  'Usage: node tools/snapshot.js [options] [file]',
+  '       node tools/snapshot.js [options] --url <http(s)-url> --month <YYYY-MM>',
+].join('\n');
 
 // ============================================================
 // 工具函数
@@ -74,6 +78,108 @@ function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function parseCliArgs(args) {
+  const options = {
+    dryRun: false,
+    updateOnly: false,
+    textOnly: false,
+    iaOnly: false,
+    screenshotOnly: false,
+    singleUrl: null,
+    singleMonth: null,
+    fileArg: null,
+  };
+  const booleanOptions = new Map([
+    ['--dry-run', 'dryRun'],
+    ['--update-only', 'updateOnly'],
+    ['--text-only', 'textOnly'],
+    ['--ia', 'iaOnly'],
+    ['--screenshot', 'screenshotOnly'],
+  ]);
+  const valueOptions = new Map([
+    ['--url', 'singleUrl'],
+    ['--month', 'singleMonth'],
+  ]);
+  const seen = new Set();
+  let positionalOnly = false;
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (!positionalOnly && arg === '--') {
+      positionalOnly = true;
+      continue;
+    }
+
+    if (!positionalOnly && arg.startsWith('-')) {
+      const property = booleanOptions.get(arg) || valueOptions.get(arg);
+      if (!property) throw new Error(`Unknown option: ${arg}`);
+      if (seen.has(arg)) throw new Error(`Duplicate option: ${arg}`);
+      seen.add(arg);
+
+      if (booleanOptions.has(arg)) {
+        options[property] = true;
+        continue;
+      }
+
+      const value = args[index + 1];
+      if (!value || value.startsWith('-')) {
+        throw new Error(`${arg} requires a value`);
+      }
+      options[property] = value;
+      index += 1;
+      continue;
+    }
+
+    if (!arg) throw new Error('Unexpected empty file argument');
+    if (options.fileArg !== null) throw new Error(`Unexpected argument: ${arg}`);
+    options.fileArg = arg;
+  }
+
+  const hasUrl = options.singleUrl !== null;
+  const hasMonth = options.singleMonth !== null;
+  if (hasUrl !== hasMonth) {
+    throw new Error('--url and --month must be used together');
+  }
+  if (hasUrl && options.fileArg !== null) {
+    throw new Error('file argument cannot be combined with --url and --month');
+  }
+  if (hasUrl) {
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(options.singleUrl);
+    } catch {
+      throw new Error('--url requires an HTTP or HTTPS URL');
+    }
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      throw new Error('--url requires an HTTP or HTTPS URL');
+    }
+    if (!/^[0-9]{4}-(0[1-9]|1[0-2])$/.test(options.singleMonth)) {
+      throw new Error('--month requires YYYY-MM with a month from 01 to 12');
+    }
+  }
+
+  const selectedModes = [
+    ['--text-only', options.textOnly],
+    ['--ia', options.iaOnly],
+    ['--screenshot', options.screenshotOnly],
+  ].filter(([, selected]) => selected).map(([name]) => name);
+  if (selectedModes.length > 1) {
+    throw new Error(`Mutually exclusive options: ${selectedModes.join(', ')}`);
+  }
+
+  const updateOnlyConflicts = [
+    ['--dry-run', options.dryRun],
+    ['--text-only', options.textOnly],
+    ['--ia', options.iaOnly],
+    ['--screenshot', options.screenshotOnly],
+  ].filter(([, selected]) => selected).map(([name]) => name);
+  if (options.updateOnly && updateOnlyConflicts.length > 0) {
+    throw new Error(`--update-only cannot be combined with ${updateOnlyConflicts.join(', ')}`);
+  }
+
+  return options;
 }
 
 /** 从 Markdown 文件中提取所有 URL 及对应的脚注编号 */
@@ -345,16 +451,25 @@ function discoverChronicleUrls(root = ROOT) {
 // ============================================================
 
 async function main() {
-  const args = process.argv.slice(2);
-  const dryRun = args.includes('--dry-run');
-  const updateOnly = args.includes('--update-only');
-  const textOnly = args.includes('--text-only');
-  const iaOnly = args.includes('--ia');
-  const screenshotOnly = args.includes('--screenshot');
-  const singleUrl = args.indexOf('--url') >= 0 ? args[args.indexOf('--url') + 1] : null;
-  const singleMonth = args.indexOf('--month') >= 0 ? args[args.indexOf('--month') + 1] : null;
-  // 文件路径参数（非 flag 参数）
-  const fileArg = args.find(a => !a.startsWith('--') && a !== singleUrl && a !== singleMonth);
+  let options;
+  try {
+    options = parseCliArgs(process.argv.slice(2));
+  } catch (err) {
+    console.error(`Error: ${err.message}`);
+    console.error(CLI_USAGE);
+    process.exitCode = 2;
+    return;
+  }
+  const {
+    dryRun,
+    updateOnly,
+    textOnly,
+    iaOnly,
+    screenshotOnly,
+    singleUrl,
+    singleMonth,
+    fileArg,
+  } = options;
 
   const doAText = !iaOnly && !screenshotOnly;   // A 路：默认开，--ia 或 --screenshot 关
   const doBWayback = !textOnly && !screenshotOnly; // B 路：默认开，--text-only 或 --screenshot 关
@@ -363,11 +478,8 @@ async function main() {
   // ---------- 收集 URL ----------
   let entries = [];
 
-  if (singleUrl && singleMonth) {
+  if (singleUrl !== null) {
     entries.push({ url: singleUrl, file: `编年/${singleMonth.replace('-', '/')}/manual.md`, line: 0, ref: null });
-  } else if (singleUrl) {
-    console.error('Error: --url requires --month');
-    process.exit(1);
   } else if (fileArg) {
     // 从指定文件提取 URL
     const fullPath = path.resolve(fileArg);
@@ -619,6 +731,7 @@ module.exports = {
   discoverChronicleUrls,
   fetchSnapshot,
   loadIndex,
+  parseCliArgs,
   saveIndex,
   upsertSource,
 };

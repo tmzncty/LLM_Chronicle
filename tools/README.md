@@ -94,7 +94,12 @@ npm run extract-urls
 ```bash
 npm run snapshot:dry-run
 npm run snapshot
+node tools/snapshot.js --dry-run --url https://example.com/source --month 2025-01
 ```
+
+`--url` 与 `--month` 必须成对使用，月份格式为 `YYYY-MM`。`--text-only`、
+`--ia`、`--screenshot` 是互斥归档模式；`--update-only` 不能再与试运行或归档
+模式组合。未知、重复或缺值的选项会在扫描和写入开始前报错。
 
 ---
 

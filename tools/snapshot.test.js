@@ -6,7 +6,21 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 
-const { fetchSnapshot, loadIndex, saveIndex, upsertSource } = require('./snapshot');
+const {
+  fetchSnapshot,
+  loadIndex,
+  parseCliArgs,
+  saveIndex,
+  upsertSource,
+} = require('./snapshot');
+
+const snapshotCli = path.join(__dirname, 'snapshot.js');
+
+function runSnapshotCli(args) {
+  return spawnSync(process.execPath, [snapshotCli, ...args], {
+    encoding: 'utf8',
+  });
+}
 
 function makeTempDir(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'llm-chronicle-snapshot-'));
@@ -67,6 +81,107 @@ function withFsFault(method, implementation) {
 function normalized(filePath) {
   return path.resolve(filePath).replace(/\\/g, '/');
 }
+
+test('the CLI rejects unknown options before starting snapshot work', () => {
+  const result = runSnapshotCli([
+    '--dry-run',
+    '--url',
+    'https://example.test/source',
+    '--month',
+    '2025-01',
+    '--dry-rnu',
+  ]);
+
+  assert.equal(result.status, 2, result.stderr);
+  assert.match(result.stderr, /Unknown option: --dry-rnu/);
+  assert.match(result.stderr, /Usage:/);
+  assert.doesNotMatch(result.stderr, /Discovered|Extracted|Dry run/);
+});
+
+test('parseCliArgs keeps valid file and manual URL invocations order-independent', () => {
+  assert.deepEqual(
+    parseCliArgs(['编年/2025/01.md', '--dry-run', '--text-only']),
+    {
+      dryRun: true,
+      updateOnly: false,
+      textOnly: true,
+      iaOnly: false,
+      screenshotOnly: false,
+      singleUrl: null,
+      singleMonth: null,
+      fileArg: '编年/2025/01.md',
+    },
+  );
+  assert.deepEqual(
+    parseCliArgs([
+      '--month',
+      '2025-01',
+      '--ia',
+      '--url',
+      'https://example.test/source',
+    ]),
+    {
+      dryRun: false,
+      updateOnly: false,
+      textOnly: false,
+      iaOnly: true,
+      screenshotOnly: false,
+      singleUrl: 'https://example.test/source',
+      singleMonth: '2025-01',
+      fileArg: null,
+    },
+  );
+  assert.equal(
+    parseCliArgs(['--dry-run', '--', '--source.md']).fileArg,
+    '--source.md',
+  );
+});
+
+test('parseCliArgs rejects incomplete or malformed manual URL arguments', () => {
+  const invalidCases = [
+    { args: ['--url'], message: /--url requires a value/ },
+    { args: ['--url', '--month', '2025-01'], message: /--url requires a value/ },
+    { args: ['--url', 'https://example.test/source'], message: /--url and --month must be used together/ },
+    { args: ['--month', '2025-01'], message: /--url and --month must be used together/ },
+    { args: ['--url', 'not-a-url', '--month', '2025-01'], message: /--url requires an HTTP or HTTPS URL/ },
+    { args: ['--url', 'file:///tmp/source', '--month', '2025-01'], message: /--url requires an HTTP or HTTPS URL/ },
+    { args: ['--url', 'https://example.test/source', '--month', '2025-13'], message: /--month requires YYYY-MM/ },
+  ];
+
+  for (const { args, message } of invalidCases) {
+    assert.throws(() => parseCliArgs(args), message, args.join(' '));
+  }
+});
+
+test('parseCliArgs rejects ambiguous inputs instead of silently ignoring them', () => {
+  const invalidCases = [
+    { args: [''], message: /Unexpected empty file argument/ },
+    { args: ['--dry-run', '--dry-run'], message: /Duplicate option: --dry-run/ },
+    {
+      args: [
+        '--url',
+        'https://example.test/one',
+        '--url',
+        'https://example.test/two',
+        '--month',
+        '2025-01',
+      ],
+      message: /Duplicate option: --url/,
+    },
+    { args: ['one.md', 'two.md'], message: /Unexpected argument: two\.md/ },
+    {
+      args: ['one.md', '--url', 'https://example.test/source', '--month', '2025-01'],
+      message: /file argument cannot be combined with --url and --month/,
+    },
+    { args: ['--text-only', '--ia'], message: /Mutually exclusive options: --text-only, --ia/ },
+    { args: ['--update-only', '--screenshot'], message: /--update-only cannot be combined with --screenshot/ },
+    { args: ['--update-only', '--dry-run'], message: /--update-only cannot be combined with --dry-run/ },
+  ];
+
+  for (const { args, message } of invalidCases) {
+    assert.throws(() => parseCliArgs(args), message, args.join(' '));
+  }
+});
 
 test('fetchSnapshot passes untrusted values to curl as literal arguments', () => {
   const url = 'https://example.test/archive?name="$(echo injected)"&next=;touch marker';
