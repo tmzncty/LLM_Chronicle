@@ -41,6 +41,14 @@ function findIndexFiles(dir) {
   return results;
 }
 
+function assertNoTempSnapshot(outputPath) {
+  const outputDir = path.dirname(outputPath);
+  const outputName = path.basename(outputPath);
+  const tempFiles = fs.readdirSync(outputDir)
+    .filter(name => name.startsWith(`.${outputName}.`) && name.endsWith('.tmp'));
+  assert.deepEqual(tempFiles, []);
+}
+
 function writeIndex(monthDir, index) {
   fs.mkdirSync(monthDir, { recursive: true });
   fs.writeFileSync(
@@ -185,20 +193,31 @@ test('parseCliArgs rejects ambiguous inputs instead of silently ignoring them', 
 
 test('fetchSnapshot passes untrusted values to curl as literal arguments', () => {
   const url = 'https://example.test/archive?name="$(echo injected)"&next=;touch marker';
-  const outputPath = 'snapshot "quoted"; $(touch marker).html';
+  const outputPath = path.join(
+    os.tmpdir(),
+    `snapshot $(touch marker); ${crypto.randomBytes(8).toString('hex')}.html`,
+  );
   let invocation;
   const executeFile = (file, args, options) => {
     invocation = { file, args, options };
+    fs.writeFileSync(args[args.indexOf('-o') + 1], 'snapshot body', 'utf8');
     return '200|42|0.125';
   };
 
   const result = fetchSnapshot(url, outputPath, 7, executeFile);
+  const publishedBody = fs.readFileSync(outputPath, 'utf8');
+  fs.rmSync(outputPath, { force: true });
 
   assert.equal(invocation.file, 'curl');
   assert.equal(invocation.options.shell, false);
   assert.equal(invocation.args[invocation.args.indexOf('--max-time') + 1], '7');
-  assert.equal(invocation.args[invocation.args.indexOf('-o') + 1], outputPath);
+  const stagedPath = invocation.args[invocation.args.indexOf('-o') + 1];
+  assert.notEqual(stagedPath, outputPath);
+  assert.equal(path.dirname(stagedPath), path.dirname(outputPath));
+  assert.match(path.basename(stagedPath), /^\.snapshot \$\(touch marker\); [0-9a-f]+\.html\..+\.tmp$/);
   assert.deepEqual(invocation.args.slice(-2), ['--', url]);
+  assert.equal(publishedBody, 'snapshot body');
+  assertNoTempSnapshot(outputPath);
   assert.deepEqual(result, {
     ok: true,
     status: 200,
@@ -505,5 +524,174 @@ test('saveIndex preserves the original index when atomic rename fails', t => {
     error => error.code === 'EACCES',
   );
   assertUnchanged(indexPath, before);
+  assertNoTempIndex(monthDir);
+});
+
+test('fetchSnapshot preserves an existing snapshot when curl fails after partial output', t => {
+  const outputPath = path.join(makeTempDir(t), 'existing.html');
+  const original = Buffer.from('known-good snapshot');
+  fs.writeFileSync(outputPath, original);
+
+  const result = fetchSnapshot(
+    'https://example.test/archive',
+    outputPath,
+    7,
+    (_file, args) => {
+      fs.writeFileSync(args[args.indexOf('-o') + 1], Buffer.alloc(512, 0x78));
+      const error = new Error('simulated curl timeout');
+      error.stderr = Buffer.from('curl: timed out');
+      throw error;
+    },
+  );
+
+  assert.equal(result.ok, false);
+  assert.match(result.error, /timed out/);
+  assert.deepEqual(fs.readFileSync(outputPath), original);
+  assertNoTempSnapshot(outputPath);
+});
+
+test('fetchSnapshot replaces an existing snapshot only after a successful response', t => {
+  const outputPath = path.join(makeTempDir(t), 'existing.html');
+  fs.writeFileSync(outputPath, 'old snapshot', 'utf8');
+
+  const result = fetchSnapshot(
+    'https://example.test/archive',
+    outputPath,
+    7,
+    (_file, args) => {
+      fs.writeFileSync(args[args.indexOf('-o') + 1], 'new snapshot', 'utf8');
+      assert.equal(fs.readFileSync(outputPath, 'utf8'), 'old snapshot');
+      return '200|12|0.125';
+    },
+  );
+
+  assert.equal(result.ok, true);
+  assert.equal(fs.readFileSync(outputPath, 'utf8'), 'new snapshot');
+  assertNoTempSnapshot(outputPath);
+});
+
+test('fetchSnapshot does not publish a large HTTP error response', t => {
+  const outputPath = path.join(makeTempDir(t), 'error.html');
+
+  const result = fetchSnapshot(
+    'https://example.test/archive',
+    outputPath,
+    7,
+    (_file, args) => {
+      fs.writeFileSync(args[args.indexOf('-o') + 1], Buffer.alloc(512, 0x65));
+      return '503|512|0.250';
+    },
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 503);
+  assert.equal(fs.existsSync(outputPath), false);
+  assertNoTempSnapshot(outputPath);
+});
+
+test('fetchSnapshot preserves an existing snapshot when publication fails', t => {
+  const outputPath = path.join(makeTempDir(t), 'existing.html');
+  const original = Buffer.from('known-good snapshot');
+  fs.writeFileSync(outputPath, original);
+  const renameFailureFs = withFsFault('renameSync', () => {
+    const error = new Error('simulated rename failure');
+    error.code = 'EACCES';
+    throw error;
+  });
+
+  const result = fetchSnapshot(
+    'https://example.test/archive',
+    outputPath,
+    7,
+    (_file, args) => {
+      fs.writeFileSync(args[args.indexOf('-o') + 1], 'replacement', 'utf8');
+      return '200|11|0.125';
+    },
+    renameFailureFs,
+  );
+
+  assert.equal(result.ok, false);
+  assert.match(result.error, /rename failure/);
+  assert.deepEqual(fs.readFileSync(outputPath), original);
+  assertNoTempSnapshot(outputPath);
+});
+
+test('a failed CLI refresh preserves metadata for the last known-good snapshot', t => {
+  const root = makeTempDir(t);
+  const toolsDir = path.join(root, 'tools');
+  const monthDir = path.join(root, 'sources', '2025', '01');
+  fs.mkdirSync(toolsDir, { recursive: true });
+  fs.mkdirSync(monthDir, { recursive: true });
+
+  for (const file of ['snapshot.js', 'extract_urls.js']) {
+    fs.copyFileSync(path.join(__dirname, file), path.join(toolsDir, file));
+  }
+
+  const url = 'https://example.test/archive/source';
+  const snapshot = 'example-test-archive-source.html';
+  const snapshotPath = path.join(monthDir, snapshot);
+  const snapshotBody = Buffer.from('<html>known-good snapshot</html>\n');
+  const source = {
+    ref: '[^7]',
+    url,
+    title: 'Known-good source',
+    snapshot,
+    archived_at: '2026-08-31',
+    file_size: snapshotBody.length,
+    file_size_human: `${snapshotBody.length} B`,
+    curl_status: 200,
+  };
+  writeIndex(monthDir, { month: '2025-01', sources: [source] });
+  fs.writeFileSync(snapshotPath, snapshotBody);
+  const beforeSnapshot = fingerprint(snapshotPath);
+
+  const guardPath = path.join(root, 'fail-curl.cjs');
+  fs.writeFileSync(guardPath, [
+    "const fs = require('node:fs');",
+    "const childProcess = require('node:child_process');",
+    "childProcess.execFileSync = (_file, args) => {",
+    "  fs.writeFileSync(args[args.indexOf('-o') + 1], 'partial response');",
+    "  const error = new Error('NETWORK_CALL_FORBIDDEN');",
+    "  error.stderr = Buffer.from('curl: simulated refresh failure');",
+    "  throw error;",
+    "};",
+    '',
+  ].join('\n'));
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.join(toolsDir, 'snapshot.js'),
+      '--text-only',
+      '--url',
+      url,
+      '--month',
+      '2025-01',
+    ],
+    {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        NODE_OPTIONS: `--require=${guardPath}`,
+      },
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stderr, /simulated refresh failure/);
+  assert.doesNotMatch(result.stderr, /NETWORK_CALL_FORBIDDEN/);
+  assertUnchanged(snapshotPath, beforeSnapshot);
+
+  const saved = loadIndex(monthDir);
+  assert.equal(saved.sources.length, 1);
+  assert.equal(saved.sources[0].snapshot, source.snapshot);
+  assert.equal(saved.sources[0].archived_at, source.archived_at);
+  assert.equal(saved.sources[0].file_size, source.file_size);
+  assert.equal(saved.sources[0].file_size_human, source.file_size_human);
+  assert.match(saved.sources[0].curl_status, /simulated refresh failure/);
+  assert.equal(
+    fs.existsSync(path.join(monthDir, 'example-test-archive-source-02.html')),
+    false,
+  );
   assertNoTempIndex(monthDir);
 });
