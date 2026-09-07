@@ -80,6 +80,28 @@ function formatBytes(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function isSafeSnapshotBasename(value) {
+  if (typeof value !== 'string'
+      || value.length === 0
+      || value === '.'
+      || value === '..'
+      || value.includes('/')
+      || value.includes('\\')
+      || value.includes('\0')
+      || path.posix.isAbsolute(value)
+      || path.win32.isAbsolute(value)
+      || path.posix.basename(value) !== value
+      || path.win32.basename(value) !== value) {
+    return false;
+  }
+  if (/[\x00-\x1f<>:"|?*]/u.test(value) || /[ .]$/u.test(value)) {
+    return false;
+  }
+  const deviceStem = value.split('.', 1)[0].replace(/[ .]+$/u, '');
+  return !/^(?:CON|PRN|AUX|NUL|COM[1-9¹²³]|LPT[1-9¹²³]|CLOCK\$|CONIN\$|CONOUT\$)$/iu
+    .test(deviceStem);
+}
+
 function parseCliArgs(args) {
   const options = {
     dryRun: false,
@@ -628,13 +650,22 @@ async function main() {
 
     for (const entry of urls) {
       const slug = slugify(entry.url);
+      const registeredSource = updateOnly
+        ? index.sources.find(source => source.url === entry.url)
+        : null;
+      const registeredSnapshot = isSafeSnapshotBasename(registeredSource?.snapshot)
+        ? registeredSource.snapshot
+        : null;
       let finalSlug = slug;
       let counter = 1;
-      while (index.sources.some(s => s.snapshot === `${finalSlug}.html`)) {
-        counter++;
-        finalSlug = `${slug}-${String(counter).padStart(2, '0')}`;
+      let filename = registeredSnapshot;
+      if (filename === null) {
+        while (index.sources.some(s => s.snapshot === `${finalSlug}.html`)) {
+          counter++;
+          finalSlug = `${slug}-${String(counter).padStart(2, '0')}`;
+        }
+        filename = `${finalSlug}.html`;
       }
-      const filename = `${finalSlug}.html`;
       const outputPath = path.join(monthDir, filename);
       const needsScreen = needsScreenshot(entry.url);
 
