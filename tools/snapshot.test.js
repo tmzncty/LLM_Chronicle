@@ -7,6 +7,7 @@ const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 
 const {
+  extractUrlsFromFile,
   fetchSnapshot,
   loadIndex,
   parseCliArgs,
@@ -480,6 +481,54 @@ test('the no-file CLI discovers live chronicle URLs without using a cache', t =>
   const withoutCache = runDry();
   assert.equal(withoutCache.status, 0, withoutCache.stderr);
   assert.equal(withoutCache.stderr, withStaleCache.stderr);
+});
+
+test('the explicit-file CLI uses the shared URL boundary rules', t => {
+  const root = makeTempDir(t);
+  const toolsDir = path.join(root, 'tools');
+  const chronicleDir = path.join(root, '编年', '2026');
+  fs.mkdirSync(toolsDir, { recursive: true });
+  fs.mkdirSync(chronicleDir, { recursive: true });
+
+  const scriptPath = path.join(toolsDir, 'snapshot.js');
+  fs.copyFileSync(path.join(__dirname, 'snapshot.js'), scriptPath);
+  fs.copyFileSync(
+    path.join(__dirname, 'extract_urls.js'),
+    path.join(toolsDir, 'extract_urls.js'),
+  );
+
+  const filePath = path.join(chronicleDir, '09.md');
+  const expectedUrls = [
+    'https://en.wikipedia.org/wiki/Llama_(language_model)',
+    'HTTPS://EXAMPLE.TEST/Release',
+    'https://www.80aj.com/前沿/20260409/',
+  ];
+  fs.writeFileSync(filePath, [
+    `[^1]: [Wikipedia](${expectedUrls[0]}).`,
+    `[^2]: <${expectedUrls[1]}>.`,
+    `[^3]: ${expectedUrls[2]}。`,
+  ].join('\n'), 'utf8');
+
+  const result = spawnSync(
+    process.execPath,
+    [scriptPath, '--dry-run', filePath],
+    { encoding: 'utf8' },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  const listedUrls = result.stderr
+    .split(/\r\n|\n|\r/)
+    .map(line => line.trim())
+    .filter(line => /^https?:\/\//i.test(line));
+  assert.deepEqual(listedUrls, expectedUrls);
+  assert.deepEqual(
+    extractUrlsFromFile(filePath).map(({ line, url, ref }) => ({ line, url, ref })),
+    expectedUrls.map((url, index) => ({
+      line: index + 1,
+      url,
+      ref: `^${index + 1}`,
+    })),
+  );
 });
 
 test('saveIndex preserves the original index when a write fails after partial output', t => {
