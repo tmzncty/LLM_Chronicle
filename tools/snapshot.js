@@ -294,10 +294,10 @@ function fetchSnapshot(url, outputPath, timeout, executeFile = execFileSync, fil
 
 async function archiveToWayback(url) {
   const apiUrl = `${IA_SPN_API}/${encodeURIComponent(url)}`;
+  const controller = new AbortController();
+  // The deadline covers response headers and body consumption alike.
+  const timer = setTimeout(() => controller.abort(), IA_TIMEOUT * 1000);
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), IA_TIMEOUT * 1000);
-
     const resp = await fetch(apiUrl, {
       method: 'GET',
       headers: {
@@ -307,8 +307,6 @@ async function archiveToWayback(url) {
       signal: controller.signal,
       redirect: 'follow',
     });
-    clearTimeout(timer);
-
     const body = await resp.text();
     let data;
     try { data = JSON.parse(body); } catch { data = null; }
@@ -343,6 +341,8 @@ async function archiveToWayback(url) {
       return { ok: false, wayback_url: null, error: `IA timeout after ${IA_TIMEOUT}s` };
     }
     return { ok: false, wayback_url: null, error: err.message || 'Unknown IA error' };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
