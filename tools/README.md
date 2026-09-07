@@ -70,12 +70,24 @@ node tools/validate_format.js --json
 | E001 | error | 文件路径仅允许 `YYYY/MM.md`（禁止 `MM-slug.md` 拆分） |
 | E002 | error | `YYYY/MM.md` 首行须精确为 `# YYYY年M月` 或 `# YYYY年M月（续）` |
 | E003 | error/info | 条目日期格式（**YYYY-MM-DD** —） |
-| E004 | warning | 脚注格式（[^N]: 来源, "标题", 日期. URL） |
+| E004 | warning/error | 出处脚注：空内容或重复编号为 error；非空但缺少 URL 为 warning |
 | E005 | warning/error | 脚注引用完整性（正文引用⇔尾注定义） |
 | E006 | warning | 编纂署名行 |
 | E007 | warning | 出处脚注区块存在性 |
 | E008 | info | 单一出处 → 是否需要"存疑"标注 |
 | E009 | warning | URL 完整性（路径过短） |
+
+E004 按物理行读取行首的数值脚注 `[^N]:`（与 E005/E007 的定义范围一致），
+不会把下一条定义或段外的 URL 借作空脚注的来源。空白首行后可以用四空格
+或等价制表符缩进补正文；缩进正文也支持空行分段。已有普通正文段落时，
+不带空行的普通非缩进续行（lazy continuation）中的 URL 同样计入。
+空行后的非缩进段落，以及段外标题、列表、引用块、代码围栏和 HTML 块等，
+不属于前一脚注。诊断行号始终指向定义行，重复编号与空内容分别报错。
+
+这是数值出处脚注的边界检查，不是完整 Markdown 渲染器：不扩展到缩进的
+定义标记、非数值标签或上下文中的代码示例识别，也不验证 URL 的可达性或
+史料真实性。非空纸本引用仍保留缺少 URL 的 warning；只有 `--strict` 会使
+单纯 warning 返回失败，空内容和重复编号在普通模式下也会返回失败。
 
 ### `extract_urls.js` — URL 提取（辅助）
 

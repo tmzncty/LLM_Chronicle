@@ -43,6 +43,157 @@ function makeWarningOnlyChronicle(t) {
   return fixturePath;
 }
 
+function footnoteIssues(lines, newline = '\n') {
+  return RULES.footnote_format.check(lines.join(newline));
+}
+
+test('E004 diagnoses an empty numeric source on its own physical line', () => {
+  for (const newline of ['\n', '\r\n', '\r']) {
+    for (const first of ['[^1]:', '[^1]: ', '[^1]:\t  ']) {
+      for (const tail of [[], [''], ['', 'https://example.com/outside'], ['https://example.com/outside'], ['[^2]: Source https://example.com/second']]) {
+        const issues = footnoteIssues(['preface', first, ...tail], newline);
+        assert.deepEqual(issues.map(issue => [issue.level, issue.rule, issue.line]), [['error', 'E004', 2]], JSON.stringify({ newline, first, tail }));
+        assert.match(issues[0].msg, /空/);
+      }
+    }
+  }
+});
+
+test('E004 keeps empty-source and repeated-label diagnostics independent', () => {
+  for (const newline of ['\n', '\r\n', '\r']) {
+    const issues = footnoteIssues(['[^1]:', '[^1]: Source https://example.com/second', '[^1]:'], newline);
+    assert.deepEqual(issues.map(issue => [issue.level, issue.line]), [['error', 1], ['error', 2], ['error', 3], ['error', 3]], JSON.stringify(newline));
+    assert.match(issues[0].msg, /空/);
+    assert.match(issues[1].msg, /重复/);
+    assert.match(issues[2].msg, /重复/);
+    assert.match(issues[3].msg, /空/);
+  }
+});
+
+test('E004 accepts indented first paragraphs, continuations and multiple paragraphs', () => {
+  const bodies = [
+    ['[^1]:', '    Source https://example.com/source'],
+    ['[^1]:', '', '    Source https://example.com/source'],
+    ['[^1]: Source', '    https://example.com/source'],
+    ['[^1]: Source', '', '    https://example.com/source'],
+    ['[^1]: Source', '', '    Another paragraph.', '', '    https://example.com/source'],
+    ['[^1]:', '\thttps://example.com/source'],
+    ['[^1]: Source', ' \thttps://example.com/source'],
+    ['[^1]:', '', '    Source text', 'https://example.com/source'],
+    ['[^1]:', '', '', '    https://example.com/source'],
+    ['[^1]: Source', '', '', '    https://example.com/source'],
+    ['[^1]: Source', '===', 'https://example.com/source'],
+    ['[^1]: Source', '', '    # Heading', '    New paragraph', 'https://example.com/source'],
+    ['[^1]: Source', '```not`fence https://example.com/source'],
+    ['[^1]: <span>Source</span>', 'https://example.com/source'],
+    ['[^1]: A | B', '--- | ---', 'https://example.com/source'],
+    ['[^1]: Source', '        code-looking continuation', 'https://example.com/source'],
+    ['[^1]: Source', '--', 'https://example.com/source'],
+    ['[^1]: ===', 'https://example.com/source'],
+    ['[^1]: --', 'https://example.com/source'],
+  ];
+  for (const newline of ['\n', '\r\n', '\r']) {
+    for (const body of bodies) assert.deepEqual(footnoteIssues(body, newline), [], JSON.stringify({ body, newline }));
+  }
+});
+
+test('E004 accepts genuine unindented paragraph-lazy continuation URLs', () => {
+  for (const continuation of ['https://example.com/source', '  https://example.com/source', '#not-a-heading https://example.com/source', '<span>https://example.com/source</span>', '<widget>https://example.com/source</widget>']) {
+    assert.deepEqual(footnoteIssues(['[^1]: Source text  ', continuation]), [], continuation);
+  }
+});
+
+test('E004 never borrows URLs from an outside paragraph or interrupting block', () => {
+  const outsideBlocks = [
+    ['', 'https://example.com/outside'],
+    ['', '   https://example.com/outside'],
+    ['# https://example.com/outside'],
+    ['   ## https://example.com/outside'],
+    ['- https://example.com/outside'],
+    ['+ https://example.com/outside'],
+    ['* https://example.com/outside'],
+    ['1. https://example.com/outside'],
+    ['1) https://example.com/outside'],
+    ['2. https://example.com/outside'],
+    ['-', 'https://example.com/outside'],
+    ['> https://example.com/outside'],
+    ['```', 'https://example.com/outside', '```'],
+    ['~~~text', 'https://example.com/outside', '~~~'],
+    ['---', 'https://example.com/outside'],
+    ['***', 'https://example.com/outside'],
+    ['<div>', 'https://example.com/outside', '</div>'],
+    ['<!-- https://example.com/outside -->'],
+    ['[^other]: https://example.com/outside'],
+  ];
+  for (const tail of outsideBlocks) {
+    const issues = footnoteIssues(['[^1]: Source without a link', ...tail]);
+    assert.deepEqual(issues.map(issue => [issue.level, issue.rule, issue.line]), [['warning', 'E004', 1]], JSON.stringify(tail));
+    assert.match(issues[0].msg, /缺少 URL/);
+  }
+});
+
+test('E004 only permits lazy continuation of a source paragraph, not a heading or fence', () => {
+  for (const first of ['- Source', '> Source', '> - Source']) {
+    assert.deepEqual(footnoteIssues([`[^1]: ${first}`, 'https://example.com/source']), [], first);
+  }
+  for (const body of [
+    ['[^1]: # Source', 'https://example.com/outside'],
+    ['[^1]:', '    # Source', 'https://example.com/outside'],
+    ['[^1]: Source', '', '    # Another heading', 'https://example.com/outside'],
+    ['[^1]: ```text', '    text', '    ```', 'https://example.com/outside'],
+    ['[^1]: Source', '', '    ```text', '    text', '    ```', 'https://example.com/outside'],
+    ['[^1]: <div>', '    text', '    </div>', 'https://example.com/outside'],
+    ['[^1]: Source', '    ===', 'https://example.com/outside'],
+    ['[^1]:', '        code', 'https://example.com/outside'],
+    ['[^1]: Source', '', '        code', 'https://example.com/outside'],
+    ['[^1]: <widget>', 'https://example.com/outside'],
+    ['[^1]: Source', '<widget>', 'https://example.com/outside'],
+    ['[^1]: Source', '', '    <widget>', 'https://example.com/outside'],
+    ['[^1]: A | B', '    --- | ---', 'https://example.com/outside'],
+    ['[^1]: Source', '', '    A | B', '    --- | ---', '    row | row', 'https://example.com/outside'],
+    ['[^1]: A | B | ', '    --- | --- |', 'https://example.com/outside'],
+    ['[^1]: A | B', '    --- | ---', '    row without a pipe', 'https://example.com/outside'],
+  ]) {
+    assert.deepEqual(footnoteIssues(body).map(issue => [issue.level, issue.line]), [['warning', 1]], JSON.stringify(body));
+  }
+});
+
+test('E004 retains nonempty text-source warning and duplicate URL-source error', () => {
+  const issues = footnoteIssues(['[^2]: Printed book, 2024.', '[^3]: https://example.com/source', '[^3]: https://example.com/other']);
+  assert.deepEqual(issues.map(issue => [issue.level, issue.line]), [['warning', 1], ['error', 3]]);
+  assert.match(issues[0].msg, /非网页来源则忽略/);
+  assert.match(issues[1].msg, /重复/);
+  assert.deepEqual(footnoteIssues(['[^name]:', ' [^4]:', '[^５]:']), []);
+});
+
+test('E004 CLI preserves error, warning and JSON behavior for source boundaries', (t) => {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'llm-footnote-cli-'));
+  t.after(() => fs.rmSync(fixtureRoot, { recursive: true, force: true }));
+  const yearDirectory = path.join(fixtureRoot, '2024');
+  fs.mkdirSync(yearDirectory);
+  const fixture = path.join(yearDirectory, '02.md');
+  const cases = [
+    { body: ['[^1]:'], level: 'error', normal: 1, strict: 1 },
+    { body: ['[^1]: Book source.'], level: 'warning', normal: 0, strict: 1 },
+    { body: ['[^1]: Source', 'https://example.com/source'], level: null, normal: 0, strict: 0 },
+    { body: ['[^1]:', '', '    Source https://example.com/source'], level: null, normal: 0, strict: 0 },
+  ];
+  for (const entry of cases) {
+    fs.writeFileSync(fixture, ['# 2024年2月', '', '**2024-02-01** — Synthetic entry（存疑）.[^1]', '', '*本篇由终末地工业史官团队编纂：测试（测试）*', '', ...entry.body, ''].join('\n'));
+    for (const strict of [false, true]) {
+      const options = strict ? ['--strict'] : [];
+      const expected = strict ? entry.strict : entry.normal;
+      const text = runValidateFormatCli([...options, fixture]);
+      assert.equal(text.status, expected, JSON.stringify(entry) + text.stderr);
+      const json = runValidateFormatCli(['--json', ...options, fixture]);
+      assert.equal(json.status, expected, JSON.stringify(entry) + json.stderr);
+      const results = JSON.parse(json.stdout);
+      assert.equal(results.length, 1);
+      assert.deepEqual(results[0].issues.map(issue => [issue.rule, issue.level, issue.line]), entry.level ? [['E004', entry.level, 7]] : []);
+    }
+  }
+});
+
 test('CLI rejects unknown options instead of silently weakening strict mode', (t) => {
   const warningOnlyChronicle = makeWarningOnlyChronicle(t);
   const result = runValidateFormatCli([
