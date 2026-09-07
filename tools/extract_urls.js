@@ -6,7 +6,8 @@ const path = require('path');
 // Quotes, Markdown delimiters, and CJK prose punctuation terminate a bare URL.
 // Parentheses are handled separately so URLs such as Wikipedia's
 // `Llama_(language_model)` keep their balanced closing parenthesis.
-const URL_RE = /https?:\/\/[^\s<>"'`\u3001\u3002\u3010\u3011\u3008\u3009\u300a\u300b\u2013\u2014\u2018\u2019\u201c\u201d\uff01\uff08\uff09\uff0c\uff1a\uff1b\uff1f]+/gi;
+const URL_START_RE = /https?:\/\//gi;
+const URL_END_RE = /[\s<>"'`\u3001\u3002\u3010\u3011\u3008\u3009\u300a\u300b\u2013\u2014\u2018\u2019\u201c\u201d\uff01\uff08\uff09\uff0c\uff1a\uff1b\uff1f]/;
 const TRAILING_PUNCTUATION_RE = /[.,;:!?>]+$/;
 const PLACEHOLDER_PATH_RE = /\/\.{3}(?:[.,;:!?>\]]*)$/;
 
@@ -61,18 +62,44 @@ function isHttpUrl(value) {
   }
 }
 
+function startsMarkdownDestination(content, index) {
+  let before = index - 1;
+  while (before >= 0 && /\s/.test(content[before])) before -= 1;
+  return content[before] === '(' && content[before - 1] === ']';
+}
+
 function extractUrls(content) {
   const urls = [];
+  const starts = new RegExp(URL_START_RE);
   let line = 1;
   let lineScanStart = 0;
+  let match;
 
-  for (const match of content.matchAll(URL_RE)) {
+  while ((match = starts.exec(content)) !== null) {
+    const markdownDestination = startsMarkdownDestination(content, match.index);
+    let end = starts.lastIndex;
+    let depth = 0;
+    // Only a Markdown destination gives ')' this structural meaning. Bare
+    // URLs keep the existing rules, including literal delimiters and embedded
+    // HTTP URLs. Scan once, then resume after this URL rather than swallowing
+    // a following link or table cell into one greedy candidate.
+    while (end < content.length && !URL_END_RE.test(content[end])) {
+      if (markdownDestination) {
+        if (content[end] === '(') depth += 1;
+        if (content[end] === ')') {
+          if (depth === 0) break;
+          depth -= 1;
+        }
+      }
+      end += 1;
+    }
+    starts.lastIndex = end;
     for (let i = lineScanStart; i < match.index; i += 1) {
       if (content.charCodeAt(i) === 10) line += 1;
     }
-    lineScanStart = match.index + match[0].length;
+    lineScanStart = end;
 
-    const url = trimUrlCandidate(match[0]);
+    const url = trimUrlCandidate(content.slice(match.index, end));
     if (isHttpUrl(url)) urls.push({ url, line });
   }
 
