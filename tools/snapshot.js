@@ -351,9 +351,11 @@ async function archiveToWayback(url) {
 // ============================================================
 
 async function screenshotPage(url, outputPath, timeout) {
+  let browser;
+  let result;
   try {
     const { chromium } = require('playwright');
-    const browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
 
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -368,21 +370,34 @@ async function screenshotPage(url, outputPath, timeout) {
       type: 'png',
     });
 
-    await browser.close();
-
     const stat = fs.statSync(outputPath);
-    return {
+    result = {
       ok: true,
       size: stat.size,
       size_human: formatBytes(stat.size),
       too_large: stat.size > MAX_FILE_SIZE_MB * 1024 * 1024,
     };
   } catch (err) {
-    return {
+    result = {
       ok: false,
       error: err.message ? err.message.substring(0, 200) : 'Unknown screenshot error',
     };
+  } finally {
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (err) {
+        // Cleanup must not replace the failure that caused the screenshot to fail.
+        if (result.ok) {
+          result = {
+            ok: false,
+            error: err.message ? err.message.substring(0, 200) : 'Unknown screenshot error',
+          };
+        }
+      }
+    }
   }
+  return result;
 }
 
 // ============================================================
