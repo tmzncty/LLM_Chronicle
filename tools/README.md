@@ -86,6 +86,13 @@ node tools/validate_format.js --json
 npm run extract-urls
 ```
 
+共享提取器会识别 Markdown 链接目的地的右括号边界，因此无空格相邻链接
+`[first](URL)[second](URL)` 和紧贴 `|` 的链接表格单元格不会合成一个 URL。
+目的地内部的平衡括号、IPv6 / 方括号路径、Wayback 或查询中的嵌套 URL
+仍作为原 URL 保留；不按第二个 HTTP scheme 或裸 URL 内的 `|` 拆分。
+这不是完整 Markdown 解析器：裸 URL 仍使用原有标点清理规则，也不新增
+代码块过滤、转义还原或引用式链接解析。文件顺序、重复引用和行号保持不变。
+
 ### `snapshot.js` — 来源快照
 
 不带文件参数时实时扫描 `编年/`，不会读取 `tools/urls.json`。可先用 dry-run
