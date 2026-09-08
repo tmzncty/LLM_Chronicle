@@ -5,6 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
+const vm = require('node:vm');
 
 const {
   extractUrlsFromFile,
@@ -1119,4 +1120,156 @@ test('a failed CLI refresh preserves metadata for the last known-good snapshot',
     false,
   );
   assertNoTempIndex(monthDir);
+});
+
+function waybackProbe(request) {
+  const pending = new Map();
+  const scheduled = [];
+  const cleared = [];
+  let nextHandle = 0;
+  // Keep the production helper private and exercise it with an isolated clock
+  // and request transport. No real timer, fetch, or CLI operation is started.
+  const archive = vm.runInNewContext(
+    `${fs.readFileSync(snapshotCli, 'utf8')}\narchiveToWayback;`,
+    {
+      require,
+      module: { exports: {} },
+      __dirname,
+      AbortController,
+      fetch: request,
+      console: { error() {} },
+      setTimeout(callback, delay) {
+        const handle = nextHandle++;
+        pending.set(handle, callback);
+        scheduled.push(delay);
+        return handle;
+      },
+      clearTimeout(handle) {
+        cleared.push(handle);
+        pending.delete(handle);
+      },
+    },
+    { filename: snapshotCli },
+  );
+  return { archive, pending, scheduled, cleared };
+}
+
+function abortRejection(signal, reject) {
+  signal.addEventListener('abort', () => {
+    const error = new Error('simulated request abort');
+    error.name = 'AbortError';
+    reject(error);
+  }, { once: true });
+}
+
+test('Wayback clears its deadline when the request fails before headers', async () => {
+  const probe = waybackProbe(async () => {
+    throw new Error('simulated connection failure');
+  });
+  const result = await probe.archive('https://example.test/source');
+  assert.equal(result.ok, false);
+  assert.equal(result.error, 'simulated connection failure');
+  assert.deepEqual(probe.scheduled, [60_000]);
+  assert.deepEqual(probe.cleared, [0]);
+  assert.equal(probe.pending.size, 0);
+});
+
+test('Wayback keeps its deadline active while reading a successful response body', async () => {
+  let activeDuringBody;
+  let requestOptions;
+  const probe = waybackProbe(async (url, options) => {
+    assert.equal(url, 'https://web.archive.org/save/https%3A%2F%2Fexample.test%2Fsource');
+    requestOptions = options;
+    return {
+      ok: true,
+      status: 200,
+      async text() {
+        activeDuringBody = probe.pending.size;
+        return JSON.stringify({ url: 'https://web.archive.org/web/example', job_id: 'job' });
+      },
+    };
+  });
+  const result = await probe.archive('https://example.test/source');
+  assert.equal(activeDuringBody, 1);
+  assert.equal(requestOptions.method, 'GET');
+  assert.equal(requestOptions.redirect, 'follow');
+  assert.equal(requestOptions.signal.aborted, false);
+  assert.equal(result.ok, true);
+  assert.equal(result.wayback_url, 'https://web.archive.org/web/example');
+  assert.equal(result.job_id, 'job');
+  assert.deepEqual(probe.cleared, [0]);
+  assert.equal(probe.pending.size, 0);
+});
+
+test('Wayback clears its deadline when reading the response body fails', async () => {
+  let activeDuringBody;
+  const probe = waybackProbe(async () => ({
+    ok: true,
+    status: 200,
+    async text() {
+      activeDuringBody = probe.pending.size;
+      throw new Error('simulated body failure');
+    },
+  }));
+  const result = await probe.archive('https://example.test/source');
+  assert.equal(activeDuringBody, 1);
+  assert.equal(result.ok, false);
+  assert.equal(result.error, 'simulated body failure');
+  assert.deepEqual(probe.cleared, [0]);
+  assert.equal(probe.pending.size, 0);
+});
+
+test('Wayback aborts a request stalled before response headers and clears its deadline', async () => {
+  const probe = waybackProbe((_url, { signal }) => new Promise((_resolve, reject) => {
+    abortRejection(signal, reject);
+  }));
+  const completion = probe.archive('https://example.test/source');
+  assert.equal(probe.pending.size, 1);
+  probe.pending.get(0)();
+  const result = await completion;
+  assert.equal(result.ok, false);
+  assert.equal(result.error, 'IA timeout after 60s');
+  assert.deepEqual(probe.cleared, [0]);
+  assert.equal(probe.pending.size, 0);
+});
+
+test('Wayback aborts a stalled response body under the same request deadline', async () => {
+  let reportBodyStarted;
+  const bodyStarted = new Promise(resolve => { reportBodyStarted = resolve; });
+  const probe = waybackProbe(async (_url, { signal }) => ({
+    ok: true,
+    status: 200,
+    text: () => new Promise((_resolve, reject) => {
+      abortRejection(signal, reject);
+      reportBodyStarted();
+    }),
+  }));
+  const completion = probe.archive('https://example.test/source');
+  await bodyStarted;
+  assert.equal(probe.pending.size, 1);
+  probe.pending.get(0)();
+  const result = await completion;
+  assert.equal(result.ok, false);
+  assert.equal(result.error, 'IA timeout after 60s');
+  assert.deepEqual(probe.cleared, [0]);
+  assert.equal(probe.pending.size, 0);
+});
+
+test('Wayback releases the deadline for existing non-success response outcomes', async () => {
+  for (const [status, body, ok, expected] of [
+    [503, '<html>unavailable</html>', false, 'IA returned HTTP 503: <html>unavailable</html>'],
+    [200, JSON.stringify({ message: 'queued' }), false, 'IA returned HTTP 200: {"message":"queued"}'],
+    [409, JSON.stringify({ url: 'https://web.archive.org/web/existing' }), true, 'https://web.archive.org/web/existing'],
+  ]) {
+    const probe = waybackProbe(async () => ({
+      ok: status === 200,
+      status,
+      text: async () => body,
+    }));
+    const result = await probe.archive('https://example.test/source');
+    assert.equal(result.ok, ok);
+    assert.equal(ok ? result.wayback_url : result.error, expected);
+    assert.deepEqual(probe.cleared, [0]);
+    assert.equal(probe.pending.size, 0);
+  }
 });
