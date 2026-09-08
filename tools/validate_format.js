@@ -214,6 +214,122 @@ function extractChronicleEntries(content) {
   return entries;
 }
 
+// This is a source-footnote boundary reader, not a general Markdown parser.
+// Keep the existing column-zero, numeric-definition scope shared by E005/E007.
+const FOOTNOTE_HTML_BLOCK = /^<(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|source|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?:[ \t/>]|$)/i;
+const FOOTNOTE_HTML_TAG = /^(?:<\/[A-Za-z][A-Za-z0-9-]*[ \t]*>|<[A-Za-z][A-Za-z0-9-]*(?:[ \t]+[A-Za-z_:][A-Za-z0-9_.:-]*(?:[ \t]*=[ \t]*(?:[^ \t"'=<>`]+|'[^']*'|"[^"]*"))?)*[ \t]*\/?>)[ \t]*$/;
+
+function footnoteFence(line) {
+  const match = line.match(/^(`{3,})[^`]*$|^(~{3,})/);
+  return match ? match[1] || match[2] : null;
+}
+
+function footnoteHtmlEnd(line) {
+  const raw = line.replace(/^<\//, '<');
+  if (/^<(?:script|pre|style|textarea)(?:[ \t>]|$)/i.test(raw)) {
+    const tag = raw.match(/^<([a-z]+)/i)[1];
+    return new RegExp(`</${tag}[ \\t]*>`, 'i');
+  }
+  if (/^<!--/.test(line)) return /-->/;
+  if (/^<\?/.test(line)) return /\?>/;
+  if (/^<!\[CDATA\[/.test(line)) return /\]\]>/;
+  if (/^<![A-Z]/.test(line)) return />/;
+  return FOOTNOTE_HTML_BLOCK.test(raw) || FOOTNOTE_HTML_TAG.test(line) ? 'blank' : null;
+}
+
+function footnoteBlockBoundary(line) {
+  return /^(?:#{1,6}(?:[ \t]|$)|>|[-+*](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$)|\[\^[^\]]+\]:)/.test(line)
+    || /^(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})[ \t]*$/.test(line)
+    || footnoteFence(line) !== null || footnoteHtmlEnd(line) !== null;
+}
+
+function updateFootnoteParagraph(state, text) {
+  let line = text.trimStart();
+  const hadParagraph = state.paragraph;
+  const previous = state.previous;
+  state.previous = line;
+  state.paragraph = false;
+  if (state.fence) {
+    const closing = line.match(/^(`+|~+)[ \t]*$/);
+    if (closing && closing[1][0] === state.fence[0]
+        && closing[1].length >= state.fence.length) state.fence = null;
+    return;
+  }
+  if (state.html) {
+    if (state.html !== 'blank' && state.html.test(line)) state.html = null;
+    return;
+  }
+  // Another four columns are indented code unless a paragraph is already open.
+  if (!hadParagraph && /^(?: {4}| {0,3}\t)/.test(text)) return;
+
+  // An owned table delimiter closes the header paragraph. Table rows cannot
+  // license an outside lazy continuation; an ordinary owned line can reopen one.
+  if (state.table && !footnoteBlockBoundary(line)) return;
+  state.table = false;
+  const cells = value => value.trim().replace(/^\||(?<!\\)\|$/g, '').split(/(?<!\\)\|/);
+  if (hadParagraph && previous.includes('|')
+      && cells(previous).length === cells(line).length
+      && cells(line).every(cell => /^[ \t]*:?-+:?[ \t]*$/.test(cell))) {
+    state.table = true;
+    return;
+  }
+
+  // List/quote source paragraphs can themselves have lazy continuation lines.
+  // Their markers do not make a nonempty leaf paragraph into a heading/code block.
+  let container;
+  while ((container = line.match(/^(?:>[ \t]?|[-+*](?:[ \t]+|$)|\d{1,9}[.)](?:[ \t]+|$))/))) {
+    line = line.slice(container[0].length).trimStart();
+  }
+  const fence = footnoteFence(line);
+  if (fence) {
+    state.fence = fence;
+    return;
+  }
+  const html = footnoteHtmlEnd(line);
+  if (html) {
+    state.html = html === 'blank' || !html.test(line) ? html : null;
+    return;
+  }
+  // An indented setext underline belongs to the footnote's own block; a bare
+  // unindented "===" can instead be lazy paragraph text in a GitHub footnote.
+  state.paragraph = line.length > 0 && !(hadParagraph && /^(?:=+|-+)[ \t]*$/.test(line))
+    && !footnoteBlockBoundary(line);
+}
+
+function extractNumericFootnotes(content) {
+  const footnotes = [];
+  let current = null;
+  let state;
+  for (const [index, line] of content.split(/\r\n|\n|\r/).entries()) {
+    const definition = line.match(/^\[(\^\d+)\]:[ \t]*(.*)$/);
+    if (definition) {
+      current = { num: definition[1], line: index + 1, body: [definition[2]] };
+      footnotes.push(current);
+      state = { paragraph: false, fence: null, html: null, table: false, previous: '' };
+      updateFootnoteParagraph(state, definition[2]);
+    } else if (current) {
+      if (/^[ \t]*$/.test(line)) {
+        state.paragraph = false;
+        state.table = false;
+        if (state.html === 'blank') state.html = null;
+        continue;
+      }
+      // A tab advances to the next four-column stop, including after 1-3 spaces.
+      const indented = line.match(/^(?: {4}| {0,3}\t)(.*)$/);
+      if (indented) {
+        current.body.push(indented[1]);
+        updateFootnoteParagraph(state, indented[1]);
+      } else if (state.paragraph && !footnoteBlockBoundary(line.trimStart())) {
+        current.body.push(line);
+        state.previous = line.trim();
+      } else {
+        current = null;
+      }
+    }
+  }
+  return footnotes;
+}
+
 // ============================================================
 // 规则定义
 // ============================================================
@@ -342,21 +458,20 @@ const RULES = {
     desc: '出处脚注格式应为 [^N]: 来源, "标题", 日期. URL',
     check(content) {
       const issues = [];
-      const fnRe = /^\[(\^\d+)\]:\s*(.+)$/gm;
-      let match;
       const seen = new Set();
-      while ((match = fnRe.exec(content)) !== null) {
-        const num = match[1];
-        const body = match[2].trim();
-        const lineNum = content.substring(0, match.index).split('\n').length;
+      for (const footnote of extractNumericFootnotes(content)) {
+        const { num, line: lineNum } = footnote;
+        const body = footnote.body.join('\n').trim();
 
         if (seen.has(num)) {
           issues.push({ level: 'error', rule: 'E004', line: lineNum, msg: `重复的脚注编号: ${num}` });
         }
         seen.add(num);
 
-        // 检查是否包含 URL
-        if (!/https?:\/\//.test(body)) {
+        // 空出处是错误；非空的纯文本（如纸本来源）仍仅提示缺少 URL。
+        if (body.length === 0) {
+          issues.push({ level: 'error', rule: 'E004', line: lineNum, msg: `${num} 出处脚注内容为空` });
+        } else if (!/https?:\/\//.test(body)) {
           issues.push({ level: 'warning', rule: 'E004', line: lineNum, msg: `${num} 缺少 URL 链接（可能为纯文本引用，非网页来源则忽略）` });
         }
       }
