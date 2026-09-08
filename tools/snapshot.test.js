@@ -243,6 +243,128 @@ test('parseCliArgs rejects ambiguous inputs instead of silently ignoring them', 
   }
 });
 
+// Exercise the private screenshot helper without installing or launching Playwright.
+function screenshotHarness({ failAt = null, closeError = null, closeBarrier = null, size = 2300 } = {}) {
+  const vm = require('node:vm');
+  const calls = [];
+  const outputPath = path.join(os.tmpdir(), 'screenshot-lifetime-test.png');
+  const url = 'https://example.com/screenshot';
+  const visit = name => {
+    calls.push(name);
+    if (failAt === name) throw new Error(`${name} failed`);
+  };
+  const page = {
+    async setViewportSize(options) {
+      visit('viewport');
+      assert.equal(options.width, 1280);
+      assert.equal(options.height, 900);
+    },
+    async goto(target, options) {
+      visit('goto');
+      assert.equal(target, url);
+      assert.equal(options.waitUntil, 'networkidle');
+      assert.equal(options.timeout, 37000);
+    },
+    async waitForTimeout(delay) { visit('settle'); assert.equal(delay, 2000); },
+    async screenshot(options) {
+      visit('screenshot');
+      assert.equal(options.path, outputPath);
+      assert.equal(options.fullPage, true);
+      assert.equal(options.type, 'png');
+    },
+  };
+  const browser = {
+    async newPage() { visit('newPage'); return page; },
+    async close() {
+      calls.push('close');
+      if (closeBarrier) await closeBarrier;
+      if (closeError) throw closeError;
+    },
+  };
+  const sandbox = {
+    module: { exports: {} }, __dirname, process, console,
+    require(specifier) {
+      if (specifier === 'playwright') {
+        visit('require');
+        return { chromium: { async launch(options) { visit('launch'); assert.equal(options.headless, true); return browser; } } };
+      }
+      if (specifier === 'fs') return {
+        statSync(target) { visit('stat'); assert.equal(target, outputPath); return { size }; },
+      };
+      return require(specifier);
+    },
+  };
+  vm.runInNewContext(
+    fs.readFileSync(snapshotCli, 'utf8') + '\nmodule.exports.screenshotPage = screenshotPage;',
+    sandbox, { filename: snapshotCli },
+  );
+  return { calls, run: () => sandbox.module.exports.screenshotPage(url, outputPath, 37) };
+}
+
+for (const failAt of ['newPage', 'viewport', 'goto', 'settle', 'screenshot', 'stat']) {
+  test(`screenshotPage closes its acquired browser after ${failAt} failure`, async () => {
+    const harness = screenshotHarness({ failAt });
+    const result = await harness.run();
+    assert.equal(result.ok, false);
+    assert.equal(result.error, `${failAt} failed`);
+    assert.equal(harness.calls.filter(call => call === 'close').length, 1);
+  });
+}
+
+for (const failAt of ['require', 'launch']) {
+  test(`screenshotPage does not close an unacquired browser after ${failAt} failure`, async () => {
+    const harness = screenshotHarness({ failAt });
+    const result = await harness.run();
+    assert.equal(result.ok, false);
+    assert.equal(result.error, `${failAt} failed`);
+    assert.equal(harness.calls.includes('close'), false);
+  });
+}
+
+test('screenshotPage retains screenshot metadata and closes once on success', async () => {
+  for (const [size, sizeHuman, tooLarge] of [[2300, '2.2 KB', false], [2097152, '2.0 MB', true]]) {
+    const harness = screenshotHarness({ size });
+    const result = await harness.run();
+    assert.deepEqual(JSON.parse(JSON.stringify(result)), { ok: true, size, size_human: sizeHuman, too_large: tooLarge });
+    assert.equal(harness.calls.filter(call => call === 'close').length, 1);
+  }
+});
+
+test('screenshotPage preserves the operation error if browser cleanup also fails', async () => {
+  const harness = screenshotHarness({ failAt: 'goto', closeError: new Error('cleanup failed') });
+  const result = await harness.run();
+  assert.equal(result.ok, false);
+  assert.equal(result.error, 'goto failed');
+  assert.equal(harness.calls.filter(call => call === 'close').length, 1);
+});
+
+test('screenshotPage reports cleanup failure after an otherwise successful screenshot', async () => {
+  const message = 'close failure '.repeat(30);
+  const harness = screenshotHarness({ closeError: new Error(message) });
+  const result = await harness.run();
+  assert.equal(result.ok, false);
+  assert.equal(result.error, message.substring(0, 200));
+  assert.equal(harness.calls.filter(call => call === 'close').length, 1);
+});
+
+test('screenshotPage awaits acquired-browser cleanup before returning a failure', async () => {
+  let releaseClose;
+  const closeBarrier = new Promise(resolve => { releaseClose = resolve; });
+  const harness = screenshotHarness({ failAt: 'screenshot', closeBarrier });
+  let settled = false;
+  const pending = harness.run().then(result => { settled = true; return result; });
+  try {
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(harness.calls.filter(call => call === 'close').length, 1);
+    assert.equal(settled, false);
+  } finally {
+    releaseClose();
+  }
+  const result = await pending;
+  assert.equal(result.ok, false);
+  assert.equal(result.error, 'screenshot failed');
+});
+
 test('fetchSnapshot passes untrusted values to curl as literal arguments', () => {
   const url = 'https://example.test/archive?name="$(echo injected)"&next=;touch marker';
   const outputPath = path.join(
