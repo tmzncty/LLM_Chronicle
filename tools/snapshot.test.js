@@ -90,6 +90,56 @@ function normalized(filePath) {
   return path.resolve(filePath).replace(/\\/g, '/');
 }
 
+function copySnapshotCli(root) {
+  const toolsDir = path.join(root, 'tools');
+  fs.mkdirSync(toolsDir, { recursive: true });
+  for (const file of ['snapshot.js', 'extract_urls.js']) {
+    fs.copyFileSync(path.join(__dirname, file), path.join(toolsDir, file));
+  }
+  return path.join(toolsDir, 'snapshot.js');
+}
+
+function noNetworkEnv(root) {
+  const guardPath = path.join(root, 'forbid-network.cjs');
+  fs.writeFileSync(guardPath, [
+    "const childProcess = require('node:child_process');",
+    "childProcess.execFileSync = () => { throw new Error('NETWORK_CALL_FORBIDDEN'); };",
+    "global.fetch = async () => { throw new Error('NETWORK_CALL_FORBIDDEN'); };",
+    '',
+  ].join('\n'));
+  return {
+    ...process.env,
+    NODE_OPTIONS: `--require=${guardPath}`,
+  };
+}
+
+function guardedSnapshotEnv(root, forbiddenPath) {
+  const guardPath = path.join(root, 'forbid-snapshot-read.cjs');
+  fs.writeFileSync(guardPath, [
+    "const fs = require('node:fs');",
+    "const path = require('node:path');",
+    "const childProcess = require('node:child_process');",
+    "const forbidden = path.resolve(process.env.FORBIDDEN_SNAPSHOT_PATH).toLowerCase();",
+    "for (const method of ['existsSync', 'statSync', 'lstatSync', 'readFileSync']) {",
+    "  const original = fs[method];",
+    "  fs[method] = function guarded(target, ...args) {",
+    "    if (typeof target === 'string' && path.resolve(target).toLowerCase() === forbidden) {",
+    "      throw new Error('FORBIDDEN_SNAPSHOT_READ');",
+    "    }",
+    "    return original.call(this, target, ...args);",
+    "  };",
+    "}",
+    "childProcess.execFileSync = () => { throw new Error('NETWORK_CALL_FORBIDDEN'); };",
+    "global.fetch = async () => { throw new Error('NETWORK_CALL_FORBIDDEN'); };",
+    '',
+  ].join('\n'));
+  return {
+    ...process.env,
+    NODE_OPTIONS: `--require=${guardPath}`,
+    FORBIDDEN_SNAPSHOT_PATH: forbiddenPath,
+  };
+}
+
 test('the CLI rejects unknown options before starting snapshot work', () => {
   const result = runSnapshotCli([
     '--dry-run',
@@ -418,6 +468,332 @@ test('the CLI exits nonzero before replacing a malformed existing index', t => {
   assert.doesNotMatch(result.stderr, new RegExp(secret));
   assert.doesNotMatch(result.stderr, /example\.test|CLI-URL-DO-NOT-ECHO/);
   assertUnchanged(indexPath, before);
+  assertNoTempIndex(monthDir);
+});
+
+test('--update-only refreshes the snapshot registered for the same URL', t => {
+  const root = makeTempDir(t);
+  const scriptPath = copySnapshotCli(root);
+  const monthDir = path.join(root, 'sources', '2025', '01');
+  const url = 'https://example.test/archive/source?revision=1';
+  const snapshot = 'example-test-archive-source.html';
+  const snapshotPath = path.join(monthDir, snapshot);
+  const snapshotContent = Buffer.from('<html>refreshed metadata</html>\n');
+
+  writeIndex(monthDir, {
+    month: '2025-01',
+    sources: [{
+      url,
+      snapshot,
+      file_size: 1,
+      custom_metadata: { preserve: true },
+    }],
+  });
+  fs.writeFileSync(snapshotPath, snapshotContent);
+  const beforeSnapshot = fingerprint(snapshotPath);
+
+  const result = spawnSync(
+    process.execPath,
+    [scriptPath, '--update-only', '--url', url, '--month', '2025-01'],
+    { encoding: 'utf8', env: noNetworkEnv(root) },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stderr, /— indexed/);
+  assert.doesNotMatch(result.stderr, /snapshot missing/);
+  assert.doesNotMatch(result.stderr, /NETWORK_CALL_FORBIDDEN/);
+  assertUnchanged(snapshotPath, beforeSnapshot);
+
+  const saved = loadIndex(monthDir);
+  assert.equal(saved.sources.length, 1);
+  assert.equal(saved.sources[0].url, url);
+  assert.equal(saved.sources[0].snapshot, snapshot);
+  assert.equal(saved.sources[0].file_size, snapshotContent.length);
+  assert.deepEqual(saved.sources[0].custom_metadata, { preserve: true });
+  assertNoTempIndex(monthDir);
+});
+
+test('--update-only allocates a suffix only for a different URL with the same slug', t => {
+  const root = makeTempDir(t);
+  const scriptPath = copySnapshotCli(root);
+  const monthDir = path.join(root, 'sources', '2025', '01');
+  const originalUrl = 'https://example.test/archive/source?revision=1';
+  const newUrl = 'https://example.test/archive/source?revision=2';
+  const baseSnapshot = 'example-test-archive-source.html';
+  const collisionSnapshot = 'example-test-archive-source-02.html';
+  const collisionContent = Buffer.from('<html>second URL</html>\n');
+
+  writeIndex(monthDir, {
+    month: '2025-01',
+    sources: [{
+      url: originalUrl,
+      snapshot: baseSnapshot,
+      custom_metadata: { preserve: true },
+    }],
+  });
+  fs.writeFileSync(path.join(monthDir, baseSnapshot), '<html>first URL</html>\n');
+  fs.writeFileSync(path.join(monthDir, collisionSnapshot), collisionContent);
+
+  const result = spawnSync(
+    process.execPath,
+    [scriptPath, '--update-only', '--url', newUrl, '--month', '2025-01'],
+    { encoding: 'utf8' },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stderr, /— indexed/);
+  assert.doesNotMatch(result.stderr, /snapshot missing/);
+
+  const saved = loadIndex(monthDir);
+  assert.equal(saved.sources.length, 2);
+  assert.deepEqual(saved.sources.find(source => source.url === originalUrl), {
+    url: originalUrl,
+    snapshot: baseSnapshot,
+    custom_metadata: { preserve: true },
+  });
+  const added = saved.sources.find(source => source.url === newUrl);
+  assert.equal(added.snapshot, collisionSnapshot);
+  assert.equal(added.file_size, collisionContent.length);
+  assertNoTempIndex(monthDir);
+});
+
+test('--update-only reuses only safe snapshot basenames for the same URL', t => {
+  const unsafeSnapshots = [
+    ['POSIX traversal', '../../../outside-posix.html', true],
+    ['Windows traversal', '..\\..\\..\\outside-windows.html', true],
+    ['POSIX absolute path', '/outside-posix-absolute.html', false],
+    ['Windows absolute path', 'C:\\outside-windows-absolute.html', false],
+    ['Windows drive-relative path', 'C:outside-windows.html', false],
+    ['Windows UNC path', '\\\\server\\share\\outside.html', false],
+    ['Windows device namespace', '\\\\?\\C:\\outside.html', false],
+    ['Windows UNC device namespace', '\\\\?\\UNC\\server\\share\\outside.html', false],
+    ['forward-slash device namespace', '//?/C:/outside.html', false],
+    ['nested POSIX path', 'nested/snapshot.html', false],
+    ['nested Windows path', 'nested\\snapshot.html', false],
+    ['current directory', '.', false],
+    ['parent directory', '..', false],
+    ['empty string', '', false],
+    ['NUL byte', 'snapshot\0.html', false],
+    ['non-string value', { filename: 'outside.html' }, false],
+    ['NTFS default data stream', 'snapshot.html::$DATA', false],
+    ['NTFS named data stream', 'carrier.html:secret-stream', false],
+    ['Windows trailing dot', 'snapshot.html.', false],
+    ['Windows trailing space', 'snapshot.html ', false],
+    ['Windows less-than sign', 'snapshot<name.html', false],
+    ['Windows greater-than sign', 'snapshot>name.html', false],
+    ['Windows double quote', 'snapshot"name.html', false],
+    ['Windows pipe', 'snapshot|name.html', false],
+    ['Windows question mark', 'snapshot?name.html', false],
+    ['Windows asterisk', 'snapshot*name.html', false],
+    ['Windows C0 control', 'snapshot\u0001name.html', false],
+    ['DOS CON bare', 'CON', false],
+    ['DOS CON extension', 'cOn.html', false],
+    ['DOS PRN bare', 'PRN', false],
+    ['DOS PRN extension', 'prn.snapshot', false],
+    ['DOS AUX bare', 'AUX', false],
+    ['DOS AUX extension', 'aux.HTML', false],
+    ['DOS NUL bare', 'NUL', false],
+    ['DOS NUL extension', 'nul.html', false],
+    ...Array.from({ length: 9 }, (_, index) => [
+      `DOS COM${index + 1}`,
+      `CoM${index + 1}.snapshot`,
+      false,
+    ]),
+    ...Array.from({ length: 9 }, (_, index) => [
+      `DOS LPT${index + 1}`,
+      `LpT${index + 1}.snapshot`,
+      false,
+    ]),
+    ['DOS COM superscript one', 'COM¹.html', false],
+    ['DOS COM superscript two', 'com².snapshot', false],
+    ['DOS COM superscript three', 'COM³.html', false],
+    ['DOS LPT superscript one', 'LPT¹.html', false],
+    ['DOS LPT superscript two', 'lpt².snapshot', false],
+    ['DOS LPT superscript three', 'LPT³.html', false],
+    ['DOS stem with a space before extension', 'CON .html', false],
+    ['legacy CLOCK$ device', 'CLOCK$.html', false],
+    ['legacy CONIN$ device', 'CONIN$.snapshot', false],
+    ['legacy CONOUT$ device', 'CONOUT$.html', false],
+  ];
+
+  for (const [label, registeredSnapshot, createDecoy] of unsafeSnapshots) {
+    const root = makeTempDir(t);
+    const scriptPath = copySnapshotCli(root);
+    const monthDir = path.join(root, 'sources', '2025', '01');
+    const url = 'https://example.test/archive/source?revision=1';
+    const safeSnapshot = 'example-test-archive-source.html';
+    const safePath = path.join(monthDir, safeSnapshot);
+    const safeContent = Buffer.from(`<html>${label}</html>\n`);
+    const originalSource = {
+      url,
+      snapshot: registeredSnapshot,
+      file_size: 1,
+      custom_metadata: { label },
+    };
+
+    writeIndex(monthDir, { month: '2025-01', sources: [originalSource] });
+    fs.writeFileSync(safePath, safeContent);
+
+    let decoyPath = null;
+    let beforeDecoy = null;
+    if (createDecoy) {
+      decoyPath = path.join(monthDir, registeredSnapshot);
+      fs.mkdirSync(path.dirname(decoyPath), { recursive: true });
+      fs.writeFileSync(decoyPath, `<html>must not be reused: ${label}</html>\n`);
+      beforeDecoy = fingerprint(decoyPath);
+    }
+
+    const guardableSnapshot = typeof registeredSnapshot === 'string'
+      && registeredSnapshot.length > 0
+      && !registeredSnapshot.includes('\0');
+    const env = guardableSnapshot
+      ? guardedSnapshotEnv(root, path.join(monthDir, registeredSnapshot))
+      : noNetworkEnv(root);
+    const result = spawnSync(
+      process.execPath,
+      [scriptPath, '--update-only', '--url', url, '--month', '2025-01'],
+      { encoding: 'utf8', env },
+    );
+
+    assert.equal(result.status, 0, `${label}: ${result.stderr}`);
+    assert.match(result.stderr, /— indexed/, label);
+    assert.doesNotMatch(result.stderr, /snapshot missing/, label);
+    assert.doesNotMatch(result.stderr, /FORBIDDEN_SNAPSHOT_READ/, label);
+
+    const saved = loadIndex(monthDir);
+    assert.equal(saved.sources.length, 1, label);
+    assert.equal(saved.sources[0].snapshot, safeSnapshot, label);
+    assert.equal(saved.sources[0].file_size, safeContent.length, label);
+    assert.deepEqual(saved.sources[0].custom_metadata, { label }, label);
+    if (decoyPath) assertUnchanged(decoyPath, beforeDecoy);
+    assertNoTempIndex(monthDir);
+  }
+
+  const root = makeTempDir(t);
+  const scriptPath = copySnapshotCli(root);
+  const monthDir = path.join(root, 'sources', '2025', '01');
+  const url = 'https://example.test/archive/missing?revision=1';
+  const registeredSnapshot = '../../../outside-only.html';
+  const originalSource = {
+    url,
+    snapshot: registeredSnapshot,
+    file_size: 7,
+    custom_metadata: { preserve: true },
+  };
+  const decoyPath = path.join(monthDir, registeredSnapshot);
+
+  writeIndex(monthDir, { month: '2025-01', sources: [originalSource] });
+  fs.mkdirSync(path.dirname(decoyPath), { recursive: true });
+  fs.writeFileSync(decoyPath, '<html>outside-only sentinel</html>\n');
+  const beforeDecoy = fingerprint(decoyPath);
+
+  const result = spawnSync(
+    process.execPath,
+    [scriptPath, '--update-only', '--url', url, '--month', '2025-01'],
+    { encoding: 'utf8' },
+  );
+  const warningLines = result.stderr
+    .split(/\r?\n/)
+    .filter(line => line.includes('snapshot missing'));
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(warningLines, [
+    '  ⚠ example-test-archive-missing — snapshot missing, use without --update-only to fetch',
+  ]);
+  assert.doesNotMatch(result.stderr, /outside-only/);
+  assert.deepEqual(loadIndex(monthDir).sources, [originalSource]);
+  assertUnchanged(decoyPath, beforeDecoy);
+  assertNoTempIndex(monthDir);
+});
+
+test('--update-only preserves portable basename edge cases', t => {
+  const safeSnapshots = [
+    'historical custom name.snapshot',
+    '历史快照.HTML',
+    '.snapshot',
+    'COM0.html',
+    'LPT0.snapshot',
+    'COM10.html',
+    'LPT10.snapshot',
+  ];
+
+  for (const snapshot of safeSnapshots) {
+    const root = makeTempDir(t);
+    const scriptPath = copySnapshotCli(root);
+    const monthDir = path.join(root, 'sources', '2025', '01');
+    const url = 'https://example.test/archive/source?revision=1';
+    const snapshotContent = Buffer.from(`<html>${snapshot}</html>\n`);
+    writeIndex(monthDir, {
+      month: '2025-01',
+      sources: [{ url, snapshot, custom_metadata: { preserve: true } }],
+    });
+    fs.writeFileSync(path.join(monthDir, snapshot), snapshotContent);
+
+    const result = spawnSync(
+      process.execPath,
+      [scriptPath, '--update-only', '--url', url, '--month', '2025-01'],
+      { encoding: 'utf8', env: noNetworkEnv(root) },
+    );
+
+    assert.equal(result.status, 0, `${snapshot}: ${result.stderr}`);
+    assert.match(result.stderr, /— indexed/, snapshot);
+    const saved = loadIndex(monthDir);
+    assert.equal(saved.sources.length, 1, snapshot);
+    assert.equal(saved.sources[0].snapshot, snapshot);
+    assert.equal(saved.sources[0].file_size, snapshotContent.length);
+    assert.deepEqual(saved.sources[0].custom_metadata, { preserve: true });
+    assertNoTempIndex(monthDir);
+  }
+});
+
+test('--update-only does not reuse a same-ref snapshot after its URL changes', t => {
+  const root = makeTempDir(t);
+  const scriptPath = copySnapshotCli(root);
+  const monthDir = path.join(root, 'sources', '2025', '01');
+  const chroniclePath = path.join(root, '编年', '2025', '01.md');
+  const originalUrl = 'https://example.test/archive/source?revision=1';
+  const editedUrl = 'https://example.test/archive/source?revision=2';
+  const baseSnapshot = 'example-test-archive-source.html';
+  const editedSnapshot = 'example-test-archive-source-02.html';
+  const basePath = path.join(monthDir, baseSnapshot);
+  const editedPath = path.join(monthDir, editedSnapshot);
+  const editedContent = Buffer.from('<html>edited URL</html>\n');
+
+  writeIndex(monthDir, {
+    month: '2025-01',
+    sources: [{
+      ref: '^7',
+      url: originalUrl,
+      snapshot: baseSnapshot,
+      custom_metadata: { preserve: true },
+    }],
+  });
+  fs.writeFileSync(basePath, '<html>original URL</html>\n');
+  fs.writeFileSync(editedPath, editedContent);
+  fs.mkdirSync(path.dirname(chroniclePath), { recursive: true });
+  fs.writeFileSync(chroniclePath, `[^7]: ${editedUrl}\n`, 'utf8');
+  const beforeBase = fingerprint(basePath);
+  const beforeEdited = fingerprint(editedPath);
+
+  const result = spawnSync(
+    process.execPath,
+    [scriptPath, '--update-only', chroniclePath],
+    { encoding: 'utf8' },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stderr, /— indexed/);
+  assert.doesNotMatch(result.stderr, /snapshot missing/);
+  assertUnchanged(basePath, beforeBase);
+  assertUnchanged(editedPath, beforeEdited);
+
+  const saved = loadIndex(monthDir);
+  assert.equal(saved.sources.length, 1);
+  assert.equal(saved.sources[0].ref, '^7');
+  assert.equal(saved.sources[0].url, editedUrl);
+  assert.equal(saved.sources[0].snapshot, editedSnapshot);
+  assert.equal(saved.sources[0].file_size, editedContent.length);
+  assert.deepEqual(saved.sources[0].custom_metadata, { preserve: true });
   assertNoTempIndex(monthDir);
 });
 
