@@ -20,7 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const crypto = require('crypto');
-const { collectUrls, findMd } = require('./extract_urls');
+const { collectUrls, extractUrls, findMd } = require('./extract_urls');
 
 // ============================================================
 // 配置
@@ -207,33 +207,26 @@ function parseCliArgs(args) {
 /** 从 Markdown 文件中提取所有 URL 及对应的脚注编号 */
 function extractUrlsFromFile(filePath) {
   const content = fs.readFileSync(filePath, 'utf8');
-  const entries = [];
-  const urlRe = /https?:\/\/[^\s\)\]\u4e00-\u9fff]+/g;
-  const refRe = /\[\^(\d+)\]/g;
+  const extracted = extractUrls(content);
 
   // 建立脚注 URL → ref 的映射
   const footnoteLines = content.split('\n').filter(l => /^\[\^\d+\]:/.test(l));
   const urlToRef = new Map();
   for (const line of footnoteLines) {
     const refMatch = line.match(/^\[(\^\d+)\]:/);
-    const urlMatch = line.match(/(https?:\/\/[^\s\)\]\u4e00-\u9fff]+)/);
+    const [urlMatch] = extractUrls(line);
     if (refMatch && urlMatch) {
-      const url = urlMatch[0].replace(/[.,;:!?)>\]]+$/, '');
-      try { new URL(url); urlToRef.set(url, refMatch[1]); } catch {}
+      urlToRef.set(urlMatch.url, refMatch[1]);
     }
   }
 
-  // 提取正文中的 URL
-  for (const m of content.matchAll(urlRe)) {
-    let url = m[0].replace(/[.,;:!?)>\]]+$/, '');
-    if (/[{}\\]/.test(url)) continue;
-    try { new URL(url); } catch { continue; }
-    const lineNum = content.substring(0, m.index).split('\n').length;
-    const rel = path.relative(ROOT, filePath).replace(/\\/g, '/');
-    entries.push({ file: rel, line: lineNum, url, ref: urlToRef.get(url) || null });
-  }
-
-  return entries;
+  const file = path.relative(ROOT, filePath).replace(/\\/g, '/');
+  return extracted.map(({ line, url }) => ({
+    file,
+    line,
+    url,
+    ref: urlToRef.get(url) || null,
+  }));
 }
 
 // ============================================================
@@ -799,6 +792,7 @@ if (require.main === module) {
 
 module.exports = {
   discoverChronicleUrls,
+  extractUrlsFromFile,
   fetchSnapshot,
   loadIndex,
   parseCliArgs,
