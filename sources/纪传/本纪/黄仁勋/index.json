@@ -1,56 +1,133 @@
 {
   "collection": "纪传/本纪/黄仁勋",
   "updated_at": "2026-11-12",
-  "archive_note": "首录来源已在线核验；内容并非 HTML 快照。NVIDIA 离任原始公告链接待补；不得把调查视为定论。",
+  "archive_note": "2026-11-12 改为叙事本纪，增补口述史、官方公司年表、大学人物资料、上市公司披露及2026董事会文件。仅记录已核验的网页 URL，当前GitHub连接器不提供HTML抓取，所有快照待归档；离任公司原始公告及后续调查结果仍待补。不同版本口述与媒体报道在正文考异。",
   "sources": [
     {
       "ref": "[^1]",
-      "url": "https://www.sec.gov/ixviewer/ix.html?doc=%2FArchives%2Fedgar%2Fdata%2F1045810%2F000104581026000021%2Fnvda-20260125.htm",
-      "title": "NVIDIA FY2026 Form 10-K",
+      "url": "https://www.caltech.edu/about/news/nvidia-founder-and-ceo-jensen-huang-to-give-caltechs-130th-commencement-address",
+      "title": "Caltech biography",
       "snapshot": null,
-      "status": "official_live_verified_snapshot_pending"
+      "status": "institutional_source_reviewed_snapshot_pending"
     },
     {
       "ref": "[^2]",
-      "url": "https://developer.nvidia.com/cuda-zone",
-      "title": "NVIDIA CUDA Zone",
+      "url": "https://www.hoover.org/plus/research/jensen-huang-vision-risk-and-gpu",
+      "title": "Hoover Institution oral history",
       "snapshot": null,
-      "status": "official_live_verified_snapshot_pending"
+      "status": "interview_source_reviewed_snapshot_pending"
     },
     {
       "ref": "[^3]",
-      "url": "https://proceedings.neurips.cc/paper/2012/hash/c399862d3b9d6b76c8436e924a68c45b-Abstract.html",
-      "title": "AlexNet NeurIPS 2012",
+      "url": "https://stripe.com/es-us/sessions/2024/a-conversation-with-nvidias-jensen-huang",
+      "title": "Stripe Sessions 2024 Jensen Huang interview",
       "snapshot": null,
-      "status": "academic_live_verified_snapshot_pending"
+      "status": "interview_source_reviewed_snapshot_pending"
     },
     {
       "ref": "[^4]",
-      "url": "https://nvidianews.nvidia.com/news/vera-rubin-full-production-agentic-ai-factory",
-      "title": "NVIDIA Vera Rubin May 2026",
+      "url": "https://stvp.stanford.edu/blog/videos/the-first-six-months-of-nvidia",
+      "title": "Stanford eCorner first six months of NVIDIA",
       "snapshot": null,
-      "status": "official_live_verified_snapshot_pending"
+      "status": "oral_history_source_reviewed_snapshot_pending"
     },
     {
       "ref": "[^5]",
-      "url": "https://investor.nvidia.com/news/press-release-details/2026/Statement-from-NVIDIA-Board-of-Directors/default.aspx",
-      "title": "NVIDIA Board statement (Nov 8, 2026)",
+      "url": "https://www.nvidia.com/en-us/about-nvidia/corporate-timeline/",
+      "title": "NVIDIA corporate timeline",
       "snapshot": null,
-      "status": "official_live_verified_snapshot_pending"
+      "status": "official_source_reviewed_snapshot_pending"
     },
     {
       "ref": "[^6]",
-      "url": "https://www.reuters.com/business/retail-consumer/nvidia-ceo-jensen-huang-step-down-big-blow-ai-boom-2026-11-12/",
-      "title": "Reuters: Jensen Huang steps down (Nov 12, 2026)",
+      "url": "https://blogs.nvidia.com/blog/huang-ntu-commencement/",
+      "title": "NVIDIA NTU commencement 2023",
       "snapshot": null,
-      "status": "independent_reporting_live_verified_snapshot_pending"
+      "status": "official_source_reviewed_snapshot_pending"
     },
     {
       "ref": "[^7]",
-      "url": "https://apnews.com/article/nvidia-megaspeed-china-singapore-huang-5403f152a601cf82ce939f1d24fffa0f",
-      "title": "AP: Jensen Huang resigns (Nov 12, 2026)",
+      "url": "https://blogs.nvidia.com/blog/jensen-huang-caltech-commencement-address/",
+      "title": "NVIDIA Caltech commencement 2024",
       "snapshot": null,
-      "status": "independent_reporting_live_verified_snapshot_pending"
+      "status": "official_source_reviewed_snapshot_pending"
+    },
+    {
+      "ref": "[^8]",
+      "url": "https://proceedings.neurips.cc/paper/2012/hash/c399862d3b9d6b76c8436e924a68c45b-Abstract.html",
+      "title": "AlexNet NeurIPS 2012",
+      "snapshot": null,
+      "status": "academic_source_reviewed_snapshot_pending"
+    },
+    {
+      "ref": "[^9]",
+      "url": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000036/nvda-20260512.htm",
+      "title": "NVIDIA 2026 Proxy Statement",
+      "snapshot": null,
+      "status": "regulatory_source_reviewed_snapshot_pending"
+    },
+    {
+      "ref": "[^10]",
+      "url": "https://nvidianews.nvidia.com/news/vera-rubin-full-production-agentic-ai-factory",
+      "title": "NVIDIA Rubin 2026",
+      "snapshot": null,
+      "status": "official_source_reviewed_snapshot_pending"
+    },
+    {
+      "ref": "[^11]",
+      "url": "https://nvidianews.nvidia.com/news/a-message-to-our-company",
+      "title": "Huang message to NVIDIA employees, Nov 8",
+      "snapshot": null,
+      "status": "official_source_reviewed_snapshot_pending"
+    },
+    {
+      "ref": "[^12]",
+      "url": "https://investor.nvidia.com/news/press-release-details/2026/Statement-from-NVIDIA-Board-of-Directors/default.aspx",
+      "title": "NVIDIA board statement, Nov 8",
+      "snapshot": null,
+      "status": "official_source_reviewed_snapshot_pending"
+    },
+    {
+      "ref": "[^13]",
+      "url": "https://nvidianews.nvidia.com/news/statement-from-the-independent-members-of-the-nvidia-board",
+      "title": "NVIDIA independent board statement, Nov 10",
+      "snapshot": null,
+      "status": "official_source_reviewed_snapshot_pending"
+    },
+    {
+      "ref": "[^14]",
+      "url": "https://www.reuters.com/business/retail-consumer/nvidia-ceo-jensen-huang-step-down-big-blow-ai-boom-2026-11-12/",
+      "title": "Reuters Jensen Huang resignation, Nov 12",
+      "snapshot": null,
+      "status": "reporting_source_reviewed_snapshot_pending"
+    },
+    {
+      "ref": "[^15]",
+      "url": "https://apnews.com/article/nvidia-megaspeed-china-singapore-huang-5403f152a601cf82ce939f1d24fffa0f",
+      "title": "AP Jensen Huang resignation, Nov 12",
+      "snapshot": null,
+      "status": "reporting_source_reviewed_snapshot_pending"
+    },
+    {
+      "ref": "[^16]",
+      "url": "https://carnegie.org/great-immigrants/jensen-huang/",
+      "title": "Carnegie Jensen Huang biography, 2024",
+      "snapshot": null,
+      "status": "institutional_source_reviewed_snapshot_pending"
+    },
+    {
+      "ref": "[^17]",
+      "url": "https://apnews.com/article/895aedd41d1c9998cb0c0d017edb98c5",
+      "title": "AP profile of Jensen Huang amid probe",
+      "snapshot": null,
+      "status": "reporting_source_reviewed_snapshot_pending"
+    },
+    {
+      "ref": "[^18]",
+      "url": "https://www.rev.com/transcripts/nvidia-ceo-jensen-huang-60-minutes-interview",
+      "title": "CBS 60 Minutes 2024 interview transcript",
+      "snapshot": null,
+      "status": "interview_source_reviewed_snapshot_pending"
     }
   ]
 }
