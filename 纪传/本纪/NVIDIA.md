@@ -200,6 +200,18 @@ AMD、Google TPU、AWS Trainium、华为昇腾等不只需要做出一块性能�
 
 ---
 
+## 十、2026年11月：黄仁勋离任与领导权交接
+
+**2026-11-08**，董事会公告就媒体披露的外国情报活动相关风险启动独立调查，当时仍公开表示信任黄仁勋及管理团队，并称没有理由认为公司秘密或国家安全已受损。[^12]
+
+**2026-11-12**，Reuters 与 AP 独立报道：黄仁勋辞去 CEO 职务并退出董事会；Colette Kress 临时接任 CEO；Reuters 另报道 Harvey C. Jones 出任董事会主席。黄仁勋自 1993 年联合创办 NVIDIA 后掌舵约 33 年。[^13][^14]
+
+这次人事变化把一个长期被公司品牌遮蔽的问题推到前台：**依赖创始人协调的 GPU、CUDA、网络、机架、投资与供应伙伴体系，能否在领导权交接后继续稳定执行？** 它并不意味着已有技术路线立刻失效，也不能据此宣告继任计划成败。相关私人关系与安全指控仍须和董事会正式调查结论区分，不由离职事实倒推责任。
+
+> 📖 详见《黄仁勋本纪》《编年·2026年11月》。
+
+---
+
 ## 评曰
 
 NVIDIA 最重要的发明不是某一张 GPU，而是让 GPU 变成了一个**可编程、可扩展、可被整个开发者社会依赖的计算平台**。
@@ -236,3 +248,6 @@ DeepSeek 之后，“堆更多 GPU 就会赢”的粗糙叙事已经失效。但
 [^9]: Reuters, “US official says Nvidia has begun shipping powerful H200 AI chips to China”, 2026-07-14.
 [^10]: NVIDIA / GTC 2026 materials on Blackwell Ultra B300 and agentic AI deployments. https://www.nvidia.com/gtc/
 [^11]: NVIDIA Newsroom, “NVIDIA Vera Rubin Ramps Into Full Production to Power Agentic AI Factories Worldwide”, 2026-05-31. https://nvidianews.nvidia.com/news/vera-rubin-full-production-agentic-ai-factory
+[^12]: NVIDIA Board of Directors, “Statement from NVIDIA Board of Directors”, 2026-11-08. https://investor.nvidia.com/news/press-release-details/2026/Statement-from-NVIDIA-Board-of-Directors/default.aspx
+[^13]: Reuters, “Nvidia CEO Jensen Huang steps down in big blow to AI boom”, 2026-11-12. https://www.reuters.com/business/retail-consumer/nvidia-ceo-jensen-huang-step-down-big-blow-ai-boom-2026-11-12/
+[^14]: Associated Press, “Nvidia CEO Jensen Huang resigns after his affair raises national security concerns”, 2026-11-12. https://apnews.com/article/nvidia-megaspeed-china-singapore-huang-5403f152a601cf82ce939f1d24fffa0f
