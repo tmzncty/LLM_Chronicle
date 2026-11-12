@@ -21,7 +21,7 @@
 | 人物 / 群体 | 推荐体例 | 真正要回答的问题 | 主要一手入口与难点 | 状态 |
 |---|---|---|---|---|
 | **Ilya Sutskever** | 人物列传 | 共同论文成果怎样进入 OpenAI 研究、董事治理和 SSI 的新组织选择 | AlexNet、seq2seq 论文；OpenAI 2015/2023/2024 文件；SSI 声明 | **首批已立传，初校** |
-| **Noam Shazeer** | 人物列传 | MoE/Transformer/MQA 的研究如何与 Character.AI 产品、回归 Google 联系 | 原始论文；Character.AI 创办者自述；Reuters；Google 公告 | **首批已立传，初校** |
+| **Noam Shazeer** | 人物列传 | MoE/Transformer/MQA 的研究如何连接 Character.AI、2024 回归 Google 与 2026-06 宣布转往 OpenAI | 原始论文；Character.AI 创办者自述；2026-05 Google 公告；2026-06 本人公开声明及 Reuters | **已立传并补 2026-06 转职声明，实际到职日仍待核** |
 | **黄仁勋** | 既有本纪（下次重议是否应列传） | 在联合创办者、CUDA 团队、投资人、公司治理间，哪些是他的亲自选择 | 当事人口述、公司文件、SEC、同时代研究；2026-11 事件要分级 | **main 已有初稿；归档 PR #81 勿合并；本批未改** |
 | **Dario Amodei** | 人物列传 | 从 OpenAI 到 Anthropic 的研究与管理选择，安全理念如何落实到组织实践 | 机构公告、共同研究论文、正式访谈及经营文件 | **下一批优先** |
 | **Sam Altman** | 人物列传 | 创办时“联合主席”与后来“CEO”有何不同；2023 董事会事件怎样改变治理 | OpenAI 2015/2019/2023 公告、法定文件 | **下一批优先** |
@@ -36,6 +36,8 @@
 以上是**编纂优先级**，不是人物历史地位的排行榜。候选名单不构成“全部可立即动笔”的承诺。
 
 ## 三、已识别、应直接纠正的叙述错误
+
+**补校 2026-06 人事时间线：** Noam Shazeer 2026 年 5 月仍在 Google Gemini 3.5 官方文章共同署名，6 月 17 日（美国当地）公开表示将离开 Google、加入 OpenAI。Reuters 同日报道并指出具体生效日未明。本批已经同步更正其人物列传与《人物谱系表》，不能再把 2024 年“回归 Google”当作截至 2026 年的最终站。原始文本转录：https://threadreaderapp.com/thread/2067400851438932297.html ；Reuters：https://www.reuters.com/technology/googles-gemini-co-lead-noam-shazeer-join-openai-2026-06-18/ 。
 
 1. 《人物谱系表》误把 Sam Altman 记作 **2015 年起任 OpenAI CEO**；2015-12-11 创办公告明确其身份为联合主席（co-chair）。须区分创办者、联合主席和后来的首席执行官。
 2. 《人物谱系表》误把 Adept / Amazon 关系写作“**2025 年被收购**”；Adept 在 **2024-06-28** 公开宣布的是非独家技术许可与部分创始人/团队转职，原公司继续运营。人物个人去向应另查，不能从商业交易推演其雇佣状态。
