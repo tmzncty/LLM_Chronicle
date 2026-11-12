@@ -1,0 +1,28 @@
+{
+  "month": "2026-11",
+  "updated_at": "2026-11-12",
+  "archive_note": "2026-11-12 首录；已访问来源网页；当前 GitHub 连接器未抓取原文 HTML 快照，全部标记 snapshot pending；NVIDIA 11 月 12 日离任官网原文待补。",
+  "sources": [
+    {
+      "ref": "[^1]",
+      "url": "https://investor.nvidia.com/news/press-release-details/2026/Statement-from-NVIDIA-Board-of-Directors/default.aspx",
+      "title": "NVIDIA Board statement (Nov 8, 2026)",
+      "snapshot": null,
+      "status": "official_live_verified_snapshot_pending"
+    },
+    {
+      "ref": "[^2]",
+      "url": "https://www.reuters.com/business/retail-consumer/nvidia-ceo-jensen-huang-step-down-big-blow-ai-boom-2026-11-12/",
+      "title": "Reuters: Jensen Huang steps down (Nov 12, 2026)",
+      "snapshot": null,
+      "status": "independent_reporting_live_verified_snapshot_pending"
+    },
+    {
+      "ref": "[^3]",
+      "url": "https://apnews.com/article/nvidia-megaspeed-china-singapore-huang-5403f152a601cf82ce939f1d24fffa0f",
+      "title": "AP: Jensen Huang resigns (Nov 12, 2026)",
+      "snapshot": null,
+      "status": "independent_reporting_live_verified_snapshot_pending"
+    }
+  ]
+}
