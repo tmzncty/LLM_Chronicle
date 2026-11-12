@@ -1,18 +1,105 @@
 {
   "collection": "纪传/本纪/NVIDIA",
-  "updated_at": "2026-08-28",
-  "archive_note": "2026-08 补订时核验 NVIDIA、BIS 与 Reuters 来源；HTML 快照待本地归档工具补抓。",
+  "updated_at": "2026-11-12",
+  "archive_note": "2026-08 补订时核验 NVIDIA、BIS 与 Reuters 来源；HTML 快照待本地归档工具补抓。；2026-11-12 增补黄仁勋离任报道与董事会声明，HTML 快照待抓取。",
   "sources": [
-    {"ref":"[^1]","url":"https://developer.nvidia.com/cuda-zone","title":"NVIDIA CUDA Zone / CUDA history","snapshot":null,"status":"live_verified_snapshot_pending"},
-    {"ref":"[^2]","url":"https://proceedings.neurips.cc/paper/2012/hash/c399862d3b9d6b76c8436e924a68c45b-Abstract.html","title":"AlexNet","snapshot":null,"status":"live_verified_snapshot_pending"},
-    {"ref":"[^3]","url":"https://arxiv.org/abs/1706.03762","title":"Attention Is All You Need","snapshot":null,"status":"live_verified_snapshot_pending"},
-    {"ref":"[^4]","url":"https://www.nvidia.com/en-us/data-center/h100/","title":"NVIDIA H100","snapshot":null,"status":"live_verified_snapshot_pending"},
-    {"ref":"[^5]","url":"https://www.federalregister.gov/documents/2022/10/13/2022-21658/","title":"2022 BIS advanced computing export controls","snapshot":null,"status":"live_verified_snapshot_pending"},
-    {"ref":"[^6]","url":"https://www.federalregister.gov/documents/2023/10/25/2023-23049/","title":"2023 BIS updated advanced computing controls","snapshot":null,"status":"live_verified_snapshot_pending"},
-    {"ref":"[^7]","url":"https://www.bis.gov/press-release/biden-harris-administration-announces-regulatory-framework-responsible-diffusion-advanced-artificial","title":"Framework for Artificial Intelligence Diffusion","snapshot":null,"status":"live_verified_snapshot_pending"},
-    {"ref":"[^8]","url":"https://www.bis.gov/press-release/department-commerce-announces-rescission-biden-era-artificial-intelligence-diffusion-rule-strengthens","title":"BIS rescission of AI Diffusion Rule","snapshot":null,"status":"live_verified_snapshot_pending"},
-    {"ref":"[^9]","url":"https://www.reuters.com/world/china/us-official-says-shipments-h200-chips-china-have-begun-2026-07-14/","title":"Reuters: limited H200 shipments to China","snapshot":null,"status":"live_verified_snapshot_pending"},
-    {"ref":"[^10]","url":"https://www.nvidia.com/gtc/","title":"NVIDIA GTC 2026 materials","snapshot":null,"status":"live_verified_snapshot_pending"},
-    {"ref":"[^11]","url":"https://nvidianews.nvidia.com/news/vera-rubin-full-production-agentic-ai-factory","title":"NVIDIA Vera Rubin full production","snapshot":null,"status":"live_verified_snapshot_pending"}
+    {
+      "ref": "[^1]",
+      "url": "https://developer.nvidia.com/cuda-zone",
+      "title": "NVIDIA CUDA Zone / CUDA history",
+      "snapshot": null,
+      "status": "live_verified_snapshot_pending"
+    },
+    {
+      "ref": "[^2]",
+      "url": "https://proceedings.neurips.cc/paper/2012/hash/c399862d3b9d6b76c8436e924a68c45b-Abstract.html",
+      "title": "AlexNet",
+      "snapshot": null,
+      "status": "live_verified_snapshot_pending"
+    },
+    {
+      "ref": "[^3]",
+      "url": "https://arxiv.org/abs/1706.03762",
+      "title": "Attention Is All You Need",
+      "snapshot": null,
+      "status": "live_verified_snapshot_pending"
+    },
+    {
+      "ref": "[^4]",
+      "url": "https://www.nvidia.com/en-us/data-center/h100/",
+      "title": "NVIDIA H100",
+      "snapshot": null,
+      "status": "live_verified_snapshot_pending"
+    },
+    {
+      "ref": "[^5]",
+      "url": "https://www.federalregister.gov/documents/2022/10/13/2022-21658/",
+      "title": "2022 BIS advanced computing export controls",
+      "snapshot": null,
+      "status": "live_verified_snapshot_pending"
+    },
+    {
+      "ref": "[^6]",
+      "url": "https://www.federalregister.gov/documents/2023/10/25/2023-23049/",
+      "title": "2023 BIS updated advanced computing controls",
+      "snapshot": null,
+      "status": "live_verified_snapshot_pending"
+    },
+    {
+      "ref": "[^7]",
+      "url": "https://www.bis.gov/press-release/biden-harris-administration-announces-regulatory-framework-responsible-diffusion-advanced-artificial",
+      "title": "Framework for Artificial Intelligence Diffusion",
+      "snapshot": null,
+      "status": "live_verified_snapshot_pending"
+    },
+    {
+      "ref": "[^8]",
+      "url": "https://www.bis.gov/press-release/department-commerce-announces-rescission-biden-era-artificial-intelligence-diffusion-rule-strengthens",
+      "title": "BIS rescission of AI Diffusion Rule",
+      "snapshot": null,
+      "status": "live_verified_snapshot_pending"
+    },
+    {
+      "ref": "[^9]",
+      "url": "https://www.reuters.com/world/china/us-official-says-shipments-h200-chips-china-have-begun-2026-07-14/",
+      "title": "Reuters: limited H200 shipments to China",
+      "snapshot": null,
+      "status": "live_verified_snapshot_pending"
+    },
+    {
+      "ref": "[^10]",
+      "url": "https://www.nvidia.com/gtc/",
+      "title": "NVIDIA GTC 2026 materials",
+      "snapshot": null,
+      "status": "live_verified_snapshot_pending"
+    },
+    {
+      "ref": "[^11]",
+      "url": "https://nvidianews.nvidia.com/news/vera-rubin-full-production-agentic-ai-factory",
+      "title": "NVIDIA Vera Rubin full production",
+      "snapshot": null,
+      "status": "live_verified_snapshot_pending"
+    },
+    {
+      "ref": "[^12]",
+      "url": "https://investor.nvidia.com/news/press-release-details/2026/Statement-from-NVIDIA-Board-of-Directors/default.aspx",
+      "title": "NVIDIA board statement on independent inquiry, 2026-11-08",
+      "snapshot": null,
+      "status": "official_live_verified_snapshot_pending"
+    },
+    {
+      "ref": "[^13]",
+      "url": "https://www.reuters.com/business/retail-consumer/nvidia-ceo-jensen-huang-step-down-big-blow-ai-boom-2026-11-12/",
+      "title": "Reuters: Jensen Huang leadership transition, 2026-11-12",
+      "snapshot": null,
+      "status": "independent_reporting_live_verified_snapshot_pending"
+    },
+    {
+      "ref": "[^14]",
+      "url": "https://apnews.com/article/nvidia-megaspeed-china-singapore-huang-5403f152a601cf82ce939f1d24fffa0f",
+      "title": "AP: Jensen Huang resigns, 2026-11-12",
+      "snapshot": null,
+      "status": "independent_reporting_live_verified_snapshot_pending"
+    }
   ]
 }
