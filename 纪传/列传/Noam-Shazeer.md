@@ -26,9 +26,13 @@
 
 这件事在人物传记里很容易被误写成“Google 收购 Character.AI，创业失败，研究者回归”；然而**技术许可、招聘人员、收购公司**是不同的法律和组织行为。该交易证明双方重新分配了技术和人才的使用方式，不能单凭此推断创办者的全部动机，也不能宣告原公司的故事已经结束。
 
-## 五、返回前沿模型研究与人物互见
+## 五、从 Gemini 再转向 OpenAI：公布去向，不预断未来
 
-Google 于 2026 年 5 月公布 Gemini 3.5 的官方文章列沙泽尔为 Google DeepMind 的副总裁及共同署名者。这足以说明他的公开职务及参与发布，却不足以把整代模型的算法、训练数据与结果归为他一人。Google 的 Gemini 演化，应与团队论文、公司本纪和产品发布的其他资料互相核对。[^6]
+Google 于 2026 年 5 月公布 Gemini 3.5 的官方文章列沙泽尔为 Google DeepMind 的副总裁及共同署名者。这足以说明他当时的公开职务及参与发布，却不足以把整代模型的算法、训练数据与结果归为他一人。Google 的 Gemini 演化，应与团队论文、公司本纪和产品发布的其他资料互相核对。[^6]
+
+**2026 年 6 月 17 日（美国当地日期，部分转发页面记为 6 月 18 日）**，沙泽尔在 X 公开表示将离开 Google、加入 OpenAI。他感谢 Google 同事，并称这是一个艰难决定。Reuters 当日独立报道此事，同时说明具体离职生效日与入职时间尚不明确。有关他在 OpenAI 的具体研究任务，媒体有报道，但在缺乏明确任命文书前，本传只把**已公开的转职意向**写作事实，不把“宣布加入”简化为“已在某日就职”。[^7][^8]
+
+这一转折打断了此前容易写成圆满故事的“离开 Google—创业—回到 Google”叙事。回归并非结局；机构与研究方向都仍在变。
 
 | 时间 | 事件 | 互见 |
 |---|---|---|
@@ -38,12 +42,13 @@ Google 于 2026 年 5 月公布 Gemini 3.5 的官方文章列沙泽尔为 Google
 | 2022-09—12 | Character.AI beta 开放；创办者公开介绍产品 | 《志·AI产品化演进》 |
 | 2024-08 | 与 de Freitas 回到 Google；Character.AI 达成非独家许可 | 《Google 本纪》 |
 | 2026-05 | 以 Google DeepMind 副总裁身份共同署名 Gemini 3.5 公告 | 《Gemini 世家》 |
+| 2026-06-17（美国当地） | 公开宣布将离开 Google、加入 OpenAI；生效和到职日期待核 | 《OpenAI 本纪》《Google 本纪》 |
 
-**考异与限制：** 论文能够证明作者、公开实验与设计主张，不能机械推断每个人的实际工作比例；公司创办者文章中的使用数字属自述，未在本文作独立验证；2024 年协议不是收购事实。全文所引网页**尚未归档 HTML 快照（snapshot pending）**。
+**考异与限制：** 论文能够证明作者、公开实验与设计主张，不能机械推断每个人的实际工作比例；公司创办者文章中的使用数字属自述，未在本文作独立验证；2024 年协议不是收购事实；2026 年 6 月转职属于公开宣布，不能据此捏造入职日期。全文所引网页**尚未归档 HTML 快照（snapshot pending）**。
 
 ## 评曰
 
-沙泽尔的研究与任职轨迹，连接了网络容量、注意力结构、推理效率和面对大众的会话服务。这些工作看似分属算法、工程与商业，实际不断遇到同一个约束：实验中成立的能力，如何成为人可以持续使用的系统？Character.AI 的创立与其后技术许可，让这一问题进入组织和产品的选择之中。但创办者的决定不等于公司全部人员的决定，一名共同作者的贡献也不等于整代模型的来历。他后来参与的工作仍在继续，本传只记已可求证之事。
+沙泽尔的研究与任职轨迹，连接了网络容量、注意力结构、推理效率和面对大众的会话服务。这些工作看似分属算法、工程与商业，实际不断遇到同一个约束：实验中成立的能力，如何成为人可以持续使用的系统？Character.AI 的创立与其后技术许可，让这一问题进入组织和产品的选择之中。2026 年再从 Google 转向 OpenAI，更提醒读者一段“回归”的故事并不自动结束。创办者的决定不等于公司全部人员的决定，一名共同作者的贡献也不等于整代模型的来历。他后来的工作仍在继续，本传只记已可求证之事。
 
 ---
 
@@ -55,3 +60,5 @@ Google 于 2026 年 5 月公布 Gemini 3.5 的官方文章列沙泽尔为 Google
 [^4]: Noam Shazeer, Daniel de Freitas and Character.AI, “Introducing Character”, 2022-12-05. https://blog.character.ai/introducing-character/
 [^5]: Reuters, “Google hires top talent from startup Character.AI, signs licensing deal”, 2024-08-02. https://www.reuters.com/technology/artificial-intelligence/google-hires-characterai-cofounders-licenses-its-models-information-reports-2024-08-02/
 [^6]: Google, “Gemini 3.5: frontier intelligence with action”, 2026-05-19. https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-3-5/
+[^7]: Noam Shazeer, 2026-06-17（美国当地）在 X 的公开转职声明，存有可读文本转录。https://threadreaderapp.com/thread/2067400851438932297.html
+[^8]: Reuters, “Google's Gemini co-lead Noam Shazeer to join OpenAI”, 2026-06-17（美国当地）. https://www.reuters.com/technology/googles-gemini-co-lead-noam-shazeer-join-openai-2026-06-18/
