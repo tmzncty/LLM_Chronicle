@@ -23,6 +23,20 @@
       "title": "AP: Jensen Huang resigns (Nov 12, 2026)",
       "snapshot": null,
       "status": "independent_reporting_live_verified_snapshot_pending"
+    },
+    {
+      "ref": "[^4]",
+      "url": "https://nvidianews.nvidia.com/news/a-message-to-our-company",
+      "title": "Jensen Huang message to NVIDIA employees, Nov 8",
+      "snapshot": null,
+      "status": "official_source_reviewed_snapshot_pending"
+    },
+    {
+      "ref": "[^5]",
+      "url": "https://nvidianews.nvidia.com/news/statement-from-the-independent-members-of-the-nvidia-board",
+      "title": "NVIDIA independent board statement, Nov 10",
+      "snapshot": null,
+      "status": "official_source_reviewed_snapshot_pending"
     }
   ]
 }
