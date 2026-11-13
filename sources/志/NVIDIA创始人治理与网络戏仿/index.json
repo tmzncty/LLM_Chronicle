@@ -1,0 +1,56 @@
+{
+  "topic": "NVIDIA创始人治理与网络戏仿",
+  "event_window": "2024-05—2026-11",
+  "compiled_at": "2026-11-13",
+  "archive_note": "均在编纂时核对为可访问网页；当前通过 GitHub 连接器写入，未存 HTML 快照。二手传播图与中文社区帖子原始 URL 未找到，不伪造来源。",
+  "sources": [
+    {
+      "ref": "[^1]",
+      "title": "NVIDIA Form 8-K, Item 5.02",
+      "url": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000082/nvda-20261111.htm",
+      "evidence_level": "regulatory_primary",
+      "snapshot": null,
+      "status": "live_verified_snapshot_pending"
+    },
+    {
+      "ref": "[^2]",
+      "title": "NVIDIA Announces CEO Transition",
+      "url": "https://nvidianews.nvidia.com/news/nvidia-announces-ceo-transition/",
+      "evidence_level": "company_primary",
+      "snapshot": null,
+      "status": "live_verified_snapshot_pending"
+    },
+    {
+      "ref": "[^3]",
+      "title": "Stripe Sessions: A conversation with NVIDIA's Jensen Huang",
+      "url": "https://stripe.com/en-pl/sessions/2024/a-conversation-with-nvidias-jensen-huang",
+      "evidence_level": "firsthand_interview",
+      "snapshot": null,
+      "status": "live_verified_snapshot_pending"
+    },
+    {
+      "ref": "[^4]",
+      "title": "Business Insider: NVIDIA's 36 direct reports in October 2025",
+      "url": "https://www.businessinsider.com/nvidia-org-chart-leaders-report-to-ceo-jensen-huang-2025-10",
+      "evidence_level": "single_outlet_internal_document_reporting",
+      "snapshot": null,
+      "status": "reported_snapshot_pending"
+    },
+    {
+      "ref": "[^5]",
+      "title": "鉅亨網／Yahoo：Terafab parody and Musk response",
+      "url": "https://tw.stock.yahoo.com/news/%E9%A6%AC%E6%96%AF%E5%85%8B%E6%89%8B%E8%85%B3%E9%80%99%E9%BA%BC%E5%BF%AB-%E7%B6%B2%E5%82%B3terafab%E6%80%A5%E5%BE%B5ceo-%E7%AB%8B%E5%8D%B3%E4%B8%8A%E4%BB%BB-%E6%A2%9D%E4%BB%B6%E7%82%BA%E9%BB%83%E4%BB%81%E5%8B%B3%E9%87%8F%E8%BA%AB%E6%89%93%E9%80%A0-222005156.html",
+      "evidence_level": "secondary_cultural_reporting",
+      "snapshot": null,
+      "status": "live_verified_snapshot_pending"
+    },
+    {
+      "ref": "[^6]",
+      "title": "Not a Tesla App: Musk says hiring Huang would be an honor",
+      "url": "https://www.notateslaapp.com/news/4992/tesla-to-hire-nvidia-ceo-musk-says-it-would-be-an-honor",
+      "evidence_level": "secondary_cultural_reporting",
+      "snapshot": null,
+      "status": "live_verified_snapshot_pending"
+    }
+  ]
+}
