@@ -1,7 +1,7 @@
 {
   "month": "2026-11",
-  "updated_at": "2026-11-12",
-  "archive_note": "2026-11-12 首录；已访问来源网页；当前 GitHub 连接器未抓取原文 HTML 快照，全部标记 snapshot pending；NVIDIA 11 月 12 日离任官网原文待补。",
+  "updated_at": "2026-11-25",
+  "archive_note": "2026-11-12 首录；已访问来源网页；当前 GitHub 连接器未抓取原文 HTML 快照，全部标记 snapshot pending；NVIDIA 11 月 12 日离任官网原文待补。 2026-11-25 补录陈吉宁审查调查与 AI 产业政策历史背景，新增来源网页已检索核实，HTML 快照待归档。",
   "sources": [
     {
       "ref": "[^1]",
@@ -37,6 +37,76 @@
       "title": "NVIDIA independent board statement, Nov 10",
       "snapshot": null,
       "status": "official_source_reviewed_snapshot_pending"
+    },
+    {
+      "ref": "[^6]",
+      "url": "https://www.ccdi.gov.cn/toutiaon/202611/t20261124_524167.html",
+      "title": "中央纪委国家监委网站：陈吉宁涉嫌严重违纪违法正接受审查调查（2026-11-24）",
+      "snapshot": null,
+      "status": "single_authoritative_source_snapshot_pending"
+    },
+    {
+      "ref": "[^7]",
+      "url": "https://www.shanghai.gov.cn/nw4411/20261124/6cfdc616e03346b58169acd131048c96.html?siteId=1",
+      "title": "上海市政府：市委常委会扩大会议（2026-11-24）",
+      "snapshot": null,
+      "status": "official_source_reviewed_snapshot_pending"
+    },
+    {
+      "ref": "[^8]",
+      "url": "https://www.tsinghua.edu.cn/info/1333/2621.htm",
+      "title": "清华大学：陈吉宁历任校长资料",
+      "snapshot": null,
+      "status": "official_source_reviewed_snapshot_pending"
+    },
+    {
+      "ref": "[^9]",
+      "url": "https://www.most.gov.cn/dfkj/bj/tpxw/201811/t20181123_143106.html",
+      "title": "科技部：北京发布智源行动计划，智源人工智能研究院正式成立（2018-11-23）",
+      "snapshot": null,
+      "status": "official_source_reviewed_snapshot_pending"
+    },
+    {
+      "ref": "[^10]",
+      "url": "https://news.pku.edu.cn/xwzh/129-305112.htm",
+      "title": "北京大学：信息学院黄铁军教授担任北京智源人工智能研究院首任院长（2018）",
+      "snapshot": null,
+      "status": "institutional_source_reviewed_snapshot_pending"
+    },
+    {
+      "ref": "[^11]",
+      "url": "https://stcsm.sh.gov.cn/xwzx/gzdt/20240223/51688881985e4e7aa5495622e3b2007f.html",
+      "title": "上海市科委：陈吉宁调研模速空间，与人工智能科创机构和企业座谈（2024-02-23）",
+      "snapshot": null,
+      "status": "official_source_reviewed_snapshot_pending"
+    },
+    {
+      "ref": "[^12]",
+      "url": "https://www.cac.gov.cn/2018-09/20/c_1123455634.htm",
+      "title": "新华社：首届世界人工智能大会释放 AI 发展新信号（2018-09-20）",
+      "snapshot": null,
+      "status": "official_source_reviewed_snapshot_pending"
+    },
+    {
+      "ref": "[^13]",
+      "url": "https://news.sciencenet.cn/htmlnews/2020/7/442706.shtm",
+      "title": "科学网：上海人工智能实验室成立（2020-07）",
+      "snapshot": null,
+      "status": "reporting_source_reviewed_snapshot_pending"
+    },
+    {
+      "ref": "[^14]",
+      "url": "https://www.sjtu-gr.com/contents/6/254.html",
+      "title": "2023 世界人工智能大会在沪开幕，陈吉宁致辞（2023-07）",
+      "snapshot": null,
+      "status": "institutional_source_reviewed_snapshot_pending"
+    },
+    {
+      "ref": "[^15]",
+      "url": "https://www.cls.cn/detail/1604429",
+      "title": "财联社：2024 全球开发者先锋大会开幕在即，陈吉宁调研模速空间（2024-02）",
+      "snapshot": null,
+      "status": "reporting_source_reviewed_snapshot_pending"
     }
   ]
 }
